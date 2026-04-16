@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Portal | Secure Access</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --primary: #8b5cf6; /* Violet */
+  --primary-hover: #7c3aed;
+  --secondary: #6366f1; /* Indigo */
+  --dark-bg: #030712;
+  --card-bg: rgba(15, 23, 42, 0.7);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--dark-bg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Base Ambient Lights */
+body::before, body::after {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: 0;
+  animation: floatAmbient 20s infinite alternate ease-in-out;
+}
+body::before {
+  background: rgba(139, 92, 246, 0.15); /* Violet glow */
+  top: -200px; left: -200px;
+}
+body::after {
+  background: rgba(99, 102, 241, 0.15); /* Indigo glow */
+  bottom: -200px; right: -200px;
+  animation-delay: -10s;
+}
+
+@keyframes floatAmbient {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.2) translate(50px, -50px); }
+}
+
+/* Interactive Canvas for Faculty Particles */
+#bg-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* Login Wrapper / 3D Perspective */
+.login-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+  perspective: 1200px;
+}
+
+.login-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
+  padding: 45px 40px;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-style: preserve-3d;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Moving Light Border Wrapper */
+.moving-border-wrapper {
+  position: absolute;
+  inset: -1px; /* Expand slightly to ensure it shows outside the card's native border */
+  border-radius: 25px; /* Match or slightly exceed card border radius */
+  padding: 3px; /* Stronger thick moving border */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10;
+}
+.moving-border-spin {
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: conic-gradient(transparent, #8b5cf6, #c4b5fd 10%, transparent 20%, transparent 40%, #0ea5e9, #bae6fd 60%, transparent 70%);
+  animation: spinner 6s linear infinite;
+}
+@keyframes spinner {
+  50% { transform: rotate(360deg); }
+}
+
+/* 3D Teacher Avatar Container */
+.avatar-container {
+  width: 140px;
+  height: 140px;
+  margin-top: -70px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 20;
+  filter: drop-shadow(0 15px 25px rgba(0,0,0,0.5));
+  transform: translateZ(50px);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#teacher-avatar {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#pupil-l, #pupil-r {
+  transition: transform 0.1s ease-out;
+}
+
+#head {
+  transition: transform 0.2s ease-out;
+  transform-origin: center center;
+}
+
+/* Typography */
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+  width: 100%;
+  transform: translateZ(30px);
+}
+
+.login-title {
+  color: var(--text-main);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  background: linear-gradient(to right, #fff, #c4b5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Form Styles */
+.login-form {
+  width: 100%;
+  transform: translateZ(40px);
+}
+
+.form-group {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  transition: color 0.3s;
+  letter-spacing: 0.5px;
+}
+
+.form-group:focus-within .form-label {
+  color: #c4b5fd;
+}
+
+.input-container {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(148, 163, 184, 0.6);
+  width: 18px;
+  height: 18px;
+  transition: color 0.3s;
+}
+
+.form-group:focus-within .input-icon {
+  color: var(--primary);
+}
+
+.form-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  padding: 14px 16px 14px 44px; /* Space for icon */
+  color: var(--text-main);
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-input::placeholder {
+  color: rgba(148, 163, 184, 0.4);
+}
+
+.form-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  transition: color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.password-toggle:hover {
+  color: var(--text-main);
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+}
+
+.submit-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transform: translateX(-100%) skewX(-15deg);
+  transition: transform 0.6s ease;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(139, 92, 246, 0.5);
+}
+
+.submit-btn:hover::after {
+  transform: translateX(100%) skewX(-15deg);
+}
+
+.submit-btn:active {
+  transform: translateY(1px);
+}
+
+/* Links */
+.links-container {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  transform: translateZ(20px);
+}
+
+.auth-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-link:hover {
+  color: #c4b5fd;
+}
+
+.auth-link svg {
+  width: 16px; height: 16px;
+}
+
+/* Flash Messages */
+.flash-container {
+  width: 100%;
+  position: absolute;
+  top: -80px;
+  left: 0;
+  z-index: 30;
+}
+.flash-message {
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  animation: dropDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  margin-bottom: 10px;
+}
+@keyframes dropDown {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.flash-danger { background: rgba(220, 38, 38, 0.8); color: #fff; border: 1px solid #ef4444; }
+.flash-success { background: rgba(5, 150, 105, 0.8); color: #fff; border: 1px solid #10b981; }
+.flash-info { background: rgba(79, 70, 229, 0.8); color: #fff; border: 1px solid #6366f1; }
+</style>
+</head>
+<body>
+
+<!-- Constellation / Hexagon Particle Background -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="login-wrapper">
+  
+  <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-message flash-{{ category }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <div class="login-card" id="login-card">
+    
+    <!-- Moving Light Border Effect -->
+    <div class="moving-border-wrapper">
+      <div class="moving-border-spin"></div>
+    </div>
+
+    <!-- 3D Teacher Avatar -->
+    <div class="avatar-container" id="avatar">
+      <svg id="teacher-avatar" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="skinGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fed7aa" />
+            <stop offset="70%" stop-color="#fdba74" />
+            <stop offset="100%" stop-color="#f97316" />
+          </radialGradient>
+          <radialGradient id="beardGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#5a3825" />
+            <stop offset="100%" stop-color="#3b2416" />
+          </radialGradient>
+          <linearGradient id="suitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#78350f" />
+            <stop offset="50%" stop-color="#5e290b" />
+            <stop offset="100%" stop-color="#451a03" />
+          </linearGradient>
+          <linearGradient id="shirtGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#bae6fd" />
+            <stop offset="100%" stop-color="#38bdf8" />
+          </linearGradient>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity="0.4" />
+          </filter>
+        </defs>
+
+        <!-- Torso / Suit Base -->
+        <path d="M 15 220 C 15 125, 80 115, 100 115 C 120 115, 185 125, 185 220" fill="url(#suitGrad)" filter="url(#shadow)" />
+        
+        <!-- Shirt -->
+        <path d="M 65 115 L 100 160 L 135 115 Z" fill="url(#shirtGrad)" />
+        <path d="M 65 115 C 80 130, 95 140, 100 145 L 100 120 Z" fill="#e0f2fe" />
+        <path d="M 135 115 C 120 130, 105 140, 100 145 L 100 120 Z" fill="#e0f2fe" />
+        
+        <!-- Tie -->
+        <polygon points="94,145 106,145 100,200" fill="#dc2626" filter="url(#shadow)" />
+        <polygon points="90,135 110,135 105,145 95,145" fill="#b91c1c" />
+
+        <!-- Suit Lapels -->
+        <path d="M 50 120 L 85 180 L 100 220 L 55 220 Z" fill="#5e290b" filter="url(#shadow)" />
+        <path d="M 150 120 L 115 180 L 100 220 L 145 220 Z" fill="#5e290b" filter="url(#shadow)" />
+
+        <!-- Head Group -->
+        <g id="head">
+          <!-- Neck -->
+          <rect x="85" y="85" width="30" height="40" rx="10" fill="url(#skinGrad)" />
+          <path d="M 85 100 Q 100 115 115 100 L 115 125 L 85 125 Z" fill="rgba(0,0,0,0.2)" />
+          
+          <!-- Back Hair Layer -->
+          <path d="M 40 50 C 30 100, 45 110, 45 110 C 45 110, 155 110, 155 110 C 155 110, 170 100, 160 50 Z" fill="#3b2416" filter="url(#shadow)" />
+
+          <!-- Ears -->
+          <ellipse cx="44" cy="80" rx="10" ry="15" fill="url(#skinGrad)" filter="url(#shadow)" />
+          <ellipse cx="156" cy="80" rx="10" ry="15" fill="url(#skinGrad)" filter="url(#shadow)" />
+          
+          <!-- Face Base -->
+          <rect x="52" y="25" width="96" height="106" rx="46" fill="url(#skinGrad)" filter="url(#shadow)" />
+          
+          <!-- Beard / Jawline Texture -->
+          <!-- Fuller beard enveloping the lower face -->
+          <path d="M 50 80 C 45 105, 55 130, 80 135 C 90 137, 110 137, 120 135 C 145 130, 155 105, 150 80 C 145 100, 130 115, 100 115 C 70 115, 55 100, 50 80 Z" fill="url(#beardGrad)" filter="url(#shadow)" />
+          <!-- Mustache -->
+          <path d="M 75 98 C 85 95, 115 95, 125 98 C 120 108, 80 108, 75 98 Z" fill="#3b2416" />
+
+          <!-- Hair Main & Bangs -->
+          <!-- Thick swept back/side hair -->
+          <path d="M 46 65 C 40 10, 160 10, 154 65 C 154 30, 110 15, 100 15 C 60 15, 46 45, 46 65" fill="#4a2e1b" />
+          <path d="M 52 50 C 70 10, 120 20, 110 40 C 90 20, 60 30, 52 50" fill="#5a3825" />
+          
+          <!-- Eyebrows -->
+          <path d="M 60 55 Q 75 50 86 58" fill="none" stroke="#3b2416" stroke-width="6" stroke-linecap="round" />
+          <path d="M 140 55 Q 125 50 114 58" fill="none" stroke="#3b2416" stroke-width="6" stroke-linecap="round" />
+
+          <!-- Thick Black Glasses (like the image) -->
+          <!-- Frames -->
+          <rect x="56" y="60" width="38" height="28" rx="8" fill="rgba(255,255,255,0.05)" stroke="#1e293b" stroke-width="6" />
+          <rect x="106" y="60" width="38" height="28" rx="8" fill="rgba(255,255,255,0.05)" stroke="#1e293b" stroke-width="6" />
+          <!-- Bridge -->
+          <line x1="94" y1="72" x2="106" y2="72" stroke="#1e293b" stroke-width="6" />
+          <!-- Frame Arms -->
+          <path d="M 56 72 Q 48 72 44 68" fill="none" stroke="#1e293b" stroke-width="6" />
+          <path d="M 144 72 Q 152 72 156 68" fill="none" stroke="#1e293b" stroke-width="6" />
+          
+          <!-- Eyes Base -->
+          <circle cx="75" cy="74" r="9" fill="#ffffff" />
+          <circle cx="125" cy="74" r="9" fill="#ffffff" />
+          
+          <!-- Dynamic Pupils -->
+          <!-- Using g tag so we can translate the whole pupil comfortably -->
+          <g id="pupil-l" transform="translate(0, 0)">
+            <circle cx="75" cy="74" r="5.5" fill="#3b2416" />
+            <circle cx="76" cy="74" r="4" fill="#1e293b" />
+            <!-- Tiny Catchlights for eyes full of life -->
+            <circle cx="73" cy="72" r="1.5" fill="#ffffff" />
+          </g>
+          <g id="pupil-r" transform="translate(0, 0)">
+            <circle cx="125" cy="74" r="5.5" fill="#3b2416" />
+            <circle cx="126" cy="74" r="4" fill="#1e293b" />
+            <circle cx="123" cy="72" r="1.5" fill="#ffffff" />
+          </g>
+
+          <!-- Nose -->
+          <path d="M 100 82 L 100 92 Q 100 95 105 94" fill="none" stroke="#ea580c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+          <!-- Mouth / Smile -->
+          <path id="mouth" d="M 88 106 Q 100 114 112 106" fill="none" stroke="#3b2416" stroke-width="2.5" stroke-linecap="round" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="login-header">
+      <h2 class="login-title">Admin Portal</h2>
+     
+    </div>
+
+    <form method="POST" action="/admin/login" class="login-form">
+      
+      <!-- Username Field focused class handles shield animation -->
+      <div class="form-group">
+        <label class="form-label" for="username">Admin ID</label>
+        <div class="input-container">
+          <!-- User Icon -->
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <input type="text" class="form-input" id="username" name="username" placeholder="e.g. admin" required autocomplete="username">
+        </div>
+      </div>
+
+      <!-- Password Field focused class handles shield animation -->
+      <div class="form-group" id="pwd-group">
+        <label class="form-label" for="password">Security Key</label>
+        <div class="input-container">
+           <!-- Key Icon -->
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+          </svg>
+          <input type="password" class="form-input" id="password" name="password" placeholder="Enter security key" required autocomplete="current-password">
+          <button type="button" class="password-toggle" onclick="togglePassword()" id="toggleBtn" tabindex="-1">
+            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Authenticate</button>
+
+    </form>
+
+    <div class="links-container">
+      <a href="{{ url_for('auth_bp.forgot_password') }}" class="auth-link">
+
+        Forgot Password ?
+      </a>
+      <a href="{{ url_for('auth_bp.student_login') }}" class="auth-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Student Portal
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// --- UI Interactions ---
+function togglePassword() {
+  const passInput = document.getElementById("password");
+  const eyeIcon = document.getElementById("eye-icon");
+  
+  if (passInput.type === "password") {
+    passInput.type = "text";
+    // Eye off icon
+    eyeIcon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>`;
+  } else {
+    passInput.type = "password";
+    // Eye on icon
+    eyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>`;
+  }
+}
+
+// Interactive Teacher Avatar Logic
+const pupilL = document.getElementById('pupil-l');
+const pupilR = document.getElementById('pupil-r');
+const head = document.getElementById('head');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+
+usernameInput.addEventListener('input', (e) => {
+  const val = e.target.value.length;
+  const ratio = Math.min(val / 20, 1);
+  const moveX = (ratio * 10) - 5; 
+  const moveY = 2; 
+  pupilL.style.transform = `translate(${moveX}px, ${moveY}px)`;
+  pupilR.style.transform = `translate(${moveX}px, ${moveY}px)`;
+  head.style.transform = `rotate(${moveX * 0.5}deg) translateY(2px)`;
+});
+
+usernameInput.addEventListener('blur', () => {
+  pupilL.style.transform = `translate(0px, 0px)`;
+  pupilR.style.transform = `translate(0px, 0px)`;
+  head.style.transform = `rotate(0deg) translateY(0px)`;
+});
+
+passwordInput.addEventListener('focus', () => {
+  // Look away slightly
+  pupilL.style.transform = `translate(0px, -4px)`;
+  pupilR.style.transform = `translate(0px, -4px)`;
+  head.style.transform = `rotate(0deg) translateY(-4px)`;
+});
+
+passwordInput.addEventListener('blur', () => {
+  pupilL.style.transform = `translate(0px, 0px)`;
+  pupilR.style.transform = `translate(0px, 0px)`;
+  head.style.transform = `rotate(0deg) translateY(0px)`;
+});
+
+// 3D Parallax Tilt Effect on Login Card and Avatar
+const loginCard = document.getElementById('login-card');
+const avatar = document.getElementById('avatar');
+
+document.addEventListener('mousemove', (e) => {
+  const xAxis = (window.innerWidth / 2 - e.pageX) / 50;
+  const yAxis = (window.innerHeight / 2 - e.pageY) / 50;
+  
+  // Rotate card
+  loginCard.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+  
+  // Extra parallax for the avatar to make it pop out more
+  avatar.style.transform = `translateZ(60px) translateX(${-xAxis}px) translateY(${-yAxis}px)`;
+  
+  // Pupil tracking the cursor if not typing
+  if (document.activeElement !== usernameInput && document.activeElement !== passwordInput) {
+     const pX = (e.pageX - window.innerWidth / 2) / 60;
+     const pY = (e.pageY - window.innerHeight / 2) / 60;
+     
+     let clampedX = Math.max(-4, Math.min(4, pX));
+     let clampedY = Math.max(-4, Math.min(4, pY));
+     
+     pupilL.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+     pupilR.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+     head.style.transform = `rotate(${clampedX * 1.5}deg) translateY(${clampedY}px)`;
+  }
+});
+
+document.addEventListener('mouseleave', () => {
+  loginCard.style.transform = `rotateY(0deg) rotateX(0deg)`;
+  avatar.style.transform = `translateZ(50px) translateX(0) translateY(0)`;
+  pupilL.style.transform = `translate(0px, 0px)`;
+  pupilR.style.transform = `translate(0px, 0px)`;
+  head.style.transform = `rotate(0deg) translateY(0px)`;
+});
+
+// Smooth return on hover out
+loginCard.addEventListener('mouseenter', () => {
+  loginCard.style.transition = 'transform 0.1s ease-out';
+});
+loginCard.addEventListener('mouseleave', () => {
+  loginCard.style.transition = 'transform 0.5s ease-out';
+});
+
+// --- High-Tech Constellation Background Script ---
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let particlesArray;
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let mouse = {
+  x: null,
+  y: null,
+  radius: 150
+}
+
+window.addEventListener('mousemove', (event) => {
+  mouse.x = event.x;
+  mouse.y = event.y;
+});
+
+// Create particle
+class Particle {
+  constructor(x, y, directionX, directionY, size, color) {
+    this.x = x;
+    this.y = y;
+    this.directionX = directionX;
+    this.directionY = directionY;
+    this.size = size;
+    this.color = color;
+  }
+  // Method to draw individual particle
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
+  // Check particle position, check mouse position, move the particle, draw the particle
+  update() {
+    // Check if particle is still within canvas
+    if (this.x > canvas.width || this.x < 0) {
+      this.directionX = -this.directionX;
+    }
+    if (this.y > canvas.height || this.y < 0) {
+      this.directionY = -this.directionY;
+    }
+
+    // Check collision detection - mouse position / particle position
+    let dx = mouse.x - this.x;
+    let dy = mouse.y - this.y;
+    let distance = Math.sqrt(dx*dx + dy*dy);
+    
+    // Smooth magnetic effect
+    if (distance < mouse.radius + this.size){
+      if (mouse.x < this.x && this.x < canvas.width - this.size * 10) {
+        this.x += 1;
+      }
+      if (mouse.x > this.x && this.x > this.size * 10) {
+        this.x -= 1;
+      }
+      if (mouse.y < this.y && this.y < canvas.height - this.size * 10) {
+        this.y += 1;
+      }
+      if (mouse.y > this.y && this.y > this.size * 10) {
+        this.y -= 1;
+      }
+    }
+    
+    // Move particle
+    this.x += this.directionX;
+    this.y += this.directionY;
+    
+    this.draw();
+  }
+}
+
+// Create particle array
+function init() {
+  particlesArray = [];
+  let numberOfParticles = (canvas.height * canvas.width) / 15000;
+  for (let i = 0; i < numberOfParticles; i++) {
+    let size = (Math.random() * 2) + 0.5;
+    let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
+    let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
+    let directionX = (Math.random() * 0.4) - 0.2;
+    let directionY = (Math.random() * 0.4) - 0.2;
+    let color = 'rgba(139, 92, 246, 0.4)'; // Subtle Violet
+    
+    particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
+  }
+}
+
+// Check if particles are close enough to draw line between them
+function connect() {
+  let opacityValue = 1;
+  for (let a = 0; a < particlesArray.length; a++) {
+    for (let b = a; b < particlesArray.length; b++) {
+      let distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x)) + 
+                     ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
+                     
+      if (distance < (canvas.width/10) * (canvas.height/10)) {
+        opacityValue = 1 - (distance/15000);
+        ctx.strokeStyle = `rgba(99, 102, 241, ${opacityValue/2})`; // Indigo lines
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+        ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+// Animation loop
+function animate() {
+  requestAnimationFrame(animate);
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+
+  for (let i = 0; i < particlesArray.length; i++) {
+    particlesArray[i].update();
+  }
+  connect();
+}
+
+// Resize event
+window.addEventListener('resize', () => {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  init();
+});
+
+init();
+animate();
+
+</script>
+
+</body>
+</html>

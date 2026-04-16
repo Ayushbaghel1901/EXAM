@@ -286,7 +286,7 @@ def faculty_exams():
 
     conn = get_connection()
     faculty = conn.execute("SELECT * FROM faculty_details WHERE user_id = ?", (session["user_id"],)).fetchone()
-    subjects = conn.execute("SELECT id, subject_name, branch, semester FROM subjects WHERE faculty_id = ?", (faculty["id"],)).fetchall()
+    subjects = conn.execute("SELECT id, subject_name, subject_code, branch, semester FROM subjects WHERE faculty_id = ?", (faculty["id"],)).fetchall()
     subject_ids = [s["id"] for s in subjects]
 
     all_exams = []
@@ -358,6 +358,8 @@ def create_exam():
 
     use_ai = request.form.get("use_ai_selection") == "on"
     
+    is_dynamic = request.form.get("is_dynamic") == "on"
+
     if not subject_id or not exam_name:
         flash("Subject and Exam Name are required.", "danger")
         return redirect(url_for("faculty_bp.faculty_exams"))
@@ -366,9 +368,10 @@ def create_exam():
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO exams (course_code, subject_id, exam_name, exam_date, start_time, end_time, total_marks, duration_minutes, pass_percentage)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (course_code, subject_id, exam_name, exam_date, start_time or None, end_time or None, total_marks, duration, pass_percentage))
+            INSERT INTO exams (course_code, subject_id, exam_name, exam_date, start_time, end_time, total_marks, duration_minutes, pass_percentage, dynamic_easy, dynamic_medium, dynamic_hard, is_dynamic)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (course_code, subject_id, exam_name, exam_date, start_time or None, end_time or None, total_marks, duration, pass_percentage, 
+              auto_easy if is_dynamic else 0, auto_medium if is_dynamic else 0, auto_hard if is_dynamic else 0, 1 if is_dynamic else 0))
         
         
         # Handle Bulk CSV Upload if present
@@ -386,7 +389,7 @@ def create_exam():
         uploaded_q_ids = [info[0] for info in uploaded_info]
 
 
-        if auto_easy > 0 or auto_medium > 0 or auto_hard > 0:
+        if not is_dynamic and (auto_easy > 0 or auto_medium > 0 or auto_hard > 0):
             def fetch_random_q(diff, count):
                 if count <= 0: return []
                 exclude_ids = uploaded_q_ids if uploaded_q_ids else [-1]

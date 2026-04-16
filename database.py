@@ -23,7 +23,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             email TEXT UNIQUE,
-            role TEXT NOT NULL CHECK(role IN ('student','faculty'))
+            role TEXT NOT NULL CHECK(role IN ('student','faculty','admin'))
         )
     """)
 

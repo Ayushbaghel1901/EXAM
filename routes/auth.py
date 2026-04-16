@@ -77,6 +77,38 @@ def faculty_login():
 
     return render_template("faculty_login.html")
 
+# ================= ADMIN LOGIN =================
+@auth_bp.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if session.get("user_id"):
+        if session.get("role") == "admin":
+            return redirect(url_for("admin_bp.admin_dashboard"))
+        elif session.get("role") == "faculty":
+            return redirect(url_for("faculty_bp.faculty_dashboard"))
+        elif session.get("role") == "student":
+            return redirect(url_for("student_bp.student_dashboard"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not username or not password:
+            flash("Please fill all fields.", "danger")
+            return render_template("admin_login.html")
+
+        user = get_user_by_username(username, "admin")
+
+        if user and check_password_hash(user["password"], password):
+            session.clear()
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["role"] = "admin"
+            return redirect(url_for("admin_bp.admin_dashboard"))
+        else:
+            flash("Invalid Credentials.", "danger")
+
+    return render_template("admin_login.html")
+
 # ================= FORGOT PASSWORD =================
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():

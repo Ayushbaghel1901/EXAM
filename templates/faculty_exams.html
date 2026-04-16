@@ -592,7 +592,14 @@ body{overflow-x:hidden;overflow-y:hidden}
             <input type="number" name="auto_hard" value="0" min="0">
           </div>
         </div>
+        </div>
         <div style="font-size:10px;color:var(--txt3);margin-top:8px;">Randomly pick from bank. These will be added along with the CSV uploads above.</div>
+        <div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); display:flex; align-items:center;">
+          <input type="checkbox" name="is_dynamic" id="isDynamicCheck" style="margin-right: 8px; transform: scale(1.1); accent-color: var(--primary);">
+          <label for="isDynamicCheck" style="font-size:11.5px; color:var(--txt2); font-weight:600; cursor:pointer;">
+            Generate unique questions PER STUDENT dynamically (Deterministic Seed based)
+          </label>
+        </div>
       </div>
       <div class="mact">
         <button type="button" class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>

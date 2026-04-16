@@ -205,23 +205,67 @@ def exam_page():
     subject = conn.execute("SELECT subject_name FROM subjects WHERE id = ?", (subject_id,)).fetchone()
     subject_name = subject["subject_name"] if subject else "Unknown Subject"
 
-    try:
-        # Check if specific questions are assigned to this exam
-        exam_q_count = conn.execute("SELECT COUNT(*) FROM exam_questions WHERE course_code = ?", (course_code,)).fetchone()[0]
+    is_dynamic_exam = dict(exam).get("is_dynamic", 0) == 1
+    dynamic_easy = dict(exam).get("dynamic_easy", 0)
+    dynamic_medium = dict(exam).get("dynamic_medium", 0)
+    dynamic_hard = dict(exam).get("dynamic_hard", 0)
+    
+    questions_db = []
+    
+    if is_dynamic_exam:
+        import random
+        # Seed ensures random sequence is stable for a particular student and exam.
+        seed_str = f"{student['enrollment_no']}_{course_code}"
         
-        if exam_q_count > 0:
-            # Fetch only assigned questions
-            questions_db = conn.execute("""
-                SELECT q.*, eq.section 
-                FROM questions q
-                JOIN exam_questions eq ON q.id = eq.question_id
-                WHERE eq.course_code = ?
-            """, (course_code,)).fetchall()
+        if dynamic_easy > 0 or dynamic_medium > 0 or dynamic_hard > 0:
+            def get_random_qs(diff_level, count):
+                if count <= 0: return []
+                qs = conn.execute("SELECT * FROM questions WHERE subject_id = ? AND difficulty = ?", (subject_id, diff_level)).fetchall()
+                q_list = list(qs)
+                if not q_list: return []
+                rng = random.Random(seed_str + diff_level) # stable seed per difficulty
+                return rng.sample(q_list, min(len(q_list), count))
+                
+            questions_db.extend(get_random_qs("easy", dynamic_easy))
+            questions_db.extend(get_random_qs("medium", dynamic_medium))
+            questions_db.extend(get_random_qs("hard", dynamic_hard))
         else:
-            # Fallback (or default behavior) - show all questions for the subject
-            questions_db = conn.execute("SELECT * FROM questions WHERE subject_id = ?", (subject_id,)).fetchall()
-    except Exception:
-        questions_db = []
+            try:
+                # Read attached CSV questions
+                exam_q_count = conn.execute("SELECT COUNT(*) FROM exam_questions WHERE course_code = ?", (course_code,)).fetchone()[0]
+                if exam_q_count > 0:
+                    qs = conn.execute("""
+                        SELECT q.*, eq.section 
+                        FROM questions q
+                        JOIN exam_questions eq ON q.id = eq.question_id
+                        WHERE eq.course_code = ?
+                    """, (course_code,)).fetchall()
+                    q_list = list(qs)
+                    rng = random.Random(seed_str + "csv_pool")
+                    total_marks = int(dict(exam).get("total_marks", len(q_list)))
+                    questions_db = rng.sample(q_list, min(len(q_list), total_marks))
+                else:
+                    questions_db = conn.execute("SELECT * FROM questions WHERE subject_id = ?", (subject_id,)).fetchall()
+            except Exception:
+                questions_db = []
+    else:
+        try:
+            # Check if specific questions are assigned to this exam
+            exam_q_count = conn.execute("SELECT COUNT(*) FROM exam_questions WHERE course_code = ?", (course_code,)).fetchone()[0]
+            
+            if exam_q_count > 0:
+                # Fetch only assigned questions
+                questions_db = conn.execute("""
+                    SELECT q.*, eq.section 
+                    FROM questions q
+                    JOIN exam_questions eq ON q.id = eq.question_id
+                    WHERE eq.course_code = ?
+                """, (course_code,)).fetchall()
+            else:
+                # Fallback (or default behavior) - show all questions for the subject
+                questions_db = conn.execute("SELECT * FROM questions WHERE subject_id = ?", (subject_id,)).fetchall()
+        except Exception:
+            questions_db = []
 
     questions = []
     for q in questions_db:
