@@ -395,17 +395,20 @@ body{overflow-x:hidden;overflow-y:hidden}
       <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Bulk Question Upload</h2>
       <button class="mcls" onclick="document.getElementById('bulkModal').classList.remove('open')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
-    <form action="{{ url_for('faculty_bp.upload_questions_subject_csv', subject_id=subject.id) }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ url_for('faculty_bp.upload_questions_subject_file', subject_id=subject.id) }}" method="POST" enctype="multipart/form-data">
       <div style="background:rgba(99,102,241,.05);padding:14px;border-radius:10px;margin-bottom:20px;font-size:12.5px;color:var(--txt2);line-height:1.5;border:1px dashed var(--border-h)">
-        Upload a single CSV file containing all questions.
+        Upload a **CSV** or **Excel (.xlsx)** file containing your questions.
         <div style="margin-top:8px;font-family:monospace;font-size:11px;background:rgba(0,0,0,.2);padding:8px;border-radius:6px">
-          Columns: questions, option1, option2, option3, option4, correct answer, difficulty
+          Columns: question_text, option_1, option_2, option_3, option_4, correct_answer, difficulty
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--txt3)">
+          * Correct answer can be the option number (1-4) or the full text.
         </div>
       </div>
       
       <div class="fg">
-        <label>Select CSV File</label>
-        <input type="file" name="csv_file" accept=".csv" style="padding:10px;border:1px dashed var(--border-h);margin-bottom:8px" required>
+        <label>Select File (.csv, .xlsx)</label>
+        <input type="file" name="csv_file" accept=".csv, .xlsx" style="padding:10px;border:1px dashed var(--border-h);margin-bottom:8px" required>
       </div>
 
       <div class="mact">

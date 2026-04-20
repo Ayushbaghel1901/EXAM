@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subject Management | ExamPortal Admin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<style>
+  .action-btns { display: flex; gap: 8px; }
+  .btn-icon { 
+    width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; 
+    border-radius: 8px; transition: all 0.2s;
+  }
+  .btn-icon:hover { transform: translateY(-2px); }
+  .btn-edit { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
+  .btn-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+  
+  .bulk-upload-area {
+    border: 2px dashed rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    background: rgba(255,255,255,0.02);
+    margin: 20px 0;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .bulk-upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(255,255,255,0.04);
+  }
+  .bulk-upload-area.dragover {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
+  }
+  
+  .progress-container { margin-top: 20px; display: none; }
+  .progress-bar {
+    height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--primary); width: 0%; transition: width 0.3s;
+  }
+  .modal-card { max-width: 600px; }
+</style>
+</head>
+<body>
+
+<div class="bg-blobs"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">🛡️</div>
+    <h1>ExamPortal</h1>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Main</div>
+    <a href="{{ url_for('admin_bp.admin_dashboard') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Overview
+    </a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Management</div>
+    <a href="{{ url_for('admin_bp.manage_faculty') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Faculty
+    </a>
+    <a href="{{ url_for('admin_bp.manage_students') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Students
+    </a>
+    <a href="{{ url_for('admin_bp.manage_subjects') }}" class="nav-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Subjects
+    </a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Security</div>
+    <a href="{{ url_for('admin_bp.view_audit_logs') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Z"/><path d="M12 6V12L16 14"/></svg>
+      Audit Logs
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <a href="{{ url_for('admin_bp.admin_logout') }}" class="nav-link danger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Subject Management</h2>
+      <p class="page-subtitle">Configure academic subjects and faculty assignments</p>
+    </div>
+    <div style="display:flex; gap:12px;">
+      <button class="btn btn-secondary" onclick="openBulkModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Bulk Import
+      </button>
+      <button class="btn btn-primary" onclick="openCreateModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Subject
+      </button>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Subject Name</th>
+          <th>Branch</th>
+          <th>Semester</th>
+          <th>Assigned Faculty</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in subjects %}
+        <tr id="row-{{ s.id }}">
+          <td><span class="badge badge-accent">{{ s.subject_code }}</span></td>
+          <td style="font-weight:600;">{{ s.subject_name }}</td>
+          <td>{{ s.branch }}</td>
+          <td><span class="badge badge-primary">Sem {{ s.semester }}</span></td>
+          <td>
+            {% if s.faculty_name %}
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366f1);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:white;">
+                  {{ s.faculty_name[0].upper() }}
+                </div>
+                <span>{{ s.faculty_name }}</span>
+              </div>
+            {% else %}
+              <span class="badge badge-warning">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-btns" style="justify-content: flex-end;">
+              <button class="btn-icon btn-edit" title="Edit Subject" 
+                      onclick="openEditModal('{{ s.id }}', '{{ s.subject_code }}', '{{ s.subject_name }}', '{{ s.branch }}', '{{ s.semester }}', '{{ s.faculty_id or '' }}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"/></svg>
+              </button>
+              <button class="btn-icon btn-delete" title="Delete Subject" onclick="deleteSubject('{{ s.id }}', '{{ s.subject_name }}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-state-icon">📖</div>
+              <p>No subjects found in the system.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Subject Form Modal -->
+<div class="modal-overlay" id="subjectModal">
+  <div class="modal-card">
+    <h3 class="modal-title" id="modalTitle">Add New Subject</h3>
+    <form id="subjectForm" method="POST" action="{{ url_for('admin_bp.manage_subjects') }}">
+      <input type="hidden" name="action" id="formAction" value="add">
+      <input type="hidden" name="subject_id" id="subjectId">
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Subject Code</label>
+          <input type="text" name="subject_code" id="subCode" class="form-control" required placeholder="e.g. CS401">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject Name</label>
+          <input type="text" name="subject_name" id="subName" class="form-control" required placeholder="e.g. Analysis of Algorithms">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Branch</label>
+          <select name="branch" id="subBranch" class="form-control">
+            <option value="">— Select Branch —</option>
+            {% for br in branches %}
+              <option value="{{ br.code }}">{{ br.name }} ({{ br.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Semester</label>
+          <input type="number" name="semester" id="subSem" class="form-control" min="1" max="8" required placeholder="1–8">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Primary Faculty</label>
+        <select name="faculty_id" id="subFaculty" class="form-control">
+          <option value="">— Unassigned —</option>
+          {% for f in faculty %}
+          <option value="{{ f.id }}">{{ f.full_name }} ({{ f.department }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary" id="submitBtn" style="flex:2;">Confirm Subject</button>
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('subjectModal')">Close</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Bulk Import Modal -->
+<div class="modal-overlay" id="bulkModal">
+  <div class="modal-card">
+    <h3 class="modal-title">Bulk Subject Import</h3>
+    <p style="color:rgba(255,255,255,0.6); font-size:14px; margin-bottom:15px;">
+      Upload a CSV file containing subject details. Need a template? 
+      <a href="{{ url_for('admin_bp.subject_csv_template') }}" style="color:var(--primary); font-weight:600;">Download Here</a>
+    </p>
+
+    <div class="bulk-upload-area" id="dropZone">
+      <div style="font-size:32px; margin-bottom:10px;">📊</div>
+      <p>Drag & Drop your CSV file here or <span style="color:var(--primary);cursor:pointer;">Browse</span></p>
+      <input type="file" id="csvFile" hidden accept=".csv">
+    </div>
+
+    <div id="uploadStatus"></div>
+
+    <div class="progress-container" id="progressContainer">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px;">
+        <span id="progressText">Processing...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="startUploadBtn" style="width:100%;">Initialize Upload</button>
+      <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('bulkModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const creationModal = document.getElementById('subjectModal');
+const bulkImportModal = document.getElementById('bulkModal');
+
+function openCreateModal() {
+  document.getElementById('modalTitle').innerText = 'Add New Subject';
+  document.getElementById('formAction').value = 'add';
+  document.getElementById('subjectForm').reset();
+  creationModal.classList.add('active');
+}
+
+function openEditModal(id, code, name, branch, sem, facultyId) {
+  document.getElementById('modalTitle').innerText = 'Edit Subject';
+  document.getElementById('formAction').value = 'edit';
+  document.getElementById('subjectId').value = id;
+  document.getElementById('subCode').value = code;
+  document.getElementById('subName').value = name;
+  document.getElementById('subBranch').value = branch;
+  document.getElementById('subSem').value = sem;
+  document.getElementById('subFaculty').value = facultyId;
+  creationModal.classList.add('active');
+}
+
+function openBulkModal() {
+  bulkImportModal.classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// Close on overlay click
+[creationModal, bulkImportModal].forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+
+async function deleteSubject(id, name) {
+  if (!confirm(`Are you sure you want to delete "${name}"?\nThis may affect linked exams.`)) return;
+  
+  try {
+    const res = await fetch(`{{ url_for('admin_bp.delete_subject', id=0) }}`.replace('0', id), { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById(`row-${id}`).style.opacity = '0';
+      setTimeout(() => document.getElementById(`row-${id}`).remove(), 300);
+    } else {
+      alert('Error: ' + data.error);
+    }
+  } catch (err) {
+    alert('Failed to delete subject: ' + err);
+  }
+}
+
+// --- Bulk Upload Logic ---
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('csvFile');
+const startUploadBtn = document.getElementById('startUploadBtn');
+
+dropZone.onclick = () => fileInput.click();
+dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+dropZone.ondrop = (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    dropZone.querySelector('p').innerText = 'Selected: ' + fileInput.files[0].name;
+  }
+};
+
+fileInput.onchange = () => {
+  if (fileInput.files.length) dropZone.querySelector('p').innerText = 'Selected: ' + fileInput.files[0].name;
+};
+
+startUploadBtn.onclick = async () => {
+  if (!fileInput.files.length) return alert('Please select a file first.');
+  
+  const formData = new FormData();
+  formData.append('csv_file', fileInput.files[0]);
+  
+  startUploadBtn.disabled = true;
+  startUploadBtn.innerText = 'Uploading...';
+  
+  try {
+    const res = await fetch("{{ url_for('admin_bp.bulk_upload_subjects') }}", { method: 'POST', body: formData });
+    const data = await res.json();
+    
+    if (data.task_id) {
+      document.getElementById('progressContainer').style.display = 'block';
+      pollProgress(data.task_id);
+    } else {
+      alert(data.error || 'Upload failed');
+      startUploadBtn.disabled = false;
+    }
+  } catch (err) {
+    alert('System error: ' + err);
+    startUploadBtn.disabled = false;
+  }
+};
+
+async function pollProgress(taskId) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`/admin/bulk_status/${taskId}`);
+      const task = await res.json();
+      
+      document.getElementById('progressFill').style.width = task.progress + '%';
+      document.getElementById('progressPercent').innerText = task.progress + '%';
+      document.getElementById('progressText').innerText = `Processed ${task.current_row}/${task.total_rows}...`;
+      
+      if (task.completed) {
+        clearInterval(interval);
+        alert(`Import Complete!\nSuccess: ${task.success}\nSkipped: ${task.skipped}\nErrors: ${task.errors.length}`);
+        location.reload();
+      }
+    } catch (err) {
+      clearInterval(interval);
+      console.error('Polling failed', err);
+    }
+  }, 1000);
+}
+</script>
+</body>
+</html>

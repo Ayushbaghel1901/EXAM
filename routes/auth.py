@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
 from database import get_connection, get_user_by_username, get_user_by_email_any_role, update_user_password
+from routes.logger import log_event, LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, OTP_SENT, OTP_VERIFIED, OTP_FAILED, PASSWORD_RESET
 import smtplib
 import random
 import time
@@ -21,11 +22,20 @@ MAIL_FROM     = "Online Exam Portal <ayush2005baghel@gmail.com>"
 # ================= STUDENT LOGIN =================
 @auth_bp.route("/student/login", methods=["GET", "POST"])
 def student_login():
-    if session.get("user_id"):
-        if session.get("role") == "student":
+    if request.method == "GET" and session.get("user_id"):
+        # Double check if session is actually valid
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM student_details WHERE user_id = %s", (session["user_id"],))
+        profile = cur.fetchone()
+        conn.close()
+
+        if profile and session.get("role") == "student":
             return redirect(url_for("student_bp.student_dashboard"))
-        elif session.get("role") == "faculty":
-            return redirect(url_for("faculty_bp.faculty_dashboard"))
+        else:
+            # Surgical clearing
+            session.pop("user_id", None)
+            session.pop("role", None)
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -38,12 +48,32 @@ def student_login():
         user = get_user_by_username(username, "student")
 
         if user and check_password_hash(user["password"], password):
+            # Verify student details exist
+            from database import get_student_by_user_id
+            student = get_student_by_user_id(user["id"])
+            if not student:
+                flash("Student profile not found. Please contact administration.", "danger")
+                return render_template("student_login.html")
+
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["role"] = "student"
+            log_event(
+                event_type=LOGIN_SUCCESS,
+                description=f"Student '{username}' logged in successfully.",
+                actor_id=user["id"],
+                actor_role="student",
+                request=request
+            )
             return redirect(url_for("student_bp.student_dashboard"))
         else:
+            log_event(
+                event_type=LOGIN_FAILED,
+                description=f"Failed student login attempt for username '{username}'.",
+                metadata={"attempted_username": username},
+                request=request
+            )
             flash("Invalid Enrollment Number or Password.", "danger")
 
     return render_template("student_login.html")
@@ -51,11 +81,23 @@ def student_login():
 # ================= TEACHER LOGIN =================
 @auth_bp.route("/faculty/login", methods=["GET", "POST"])
 def faculty_login():
-    if session.get("user_id"):
-        if session.get("role") == "faculty":
+    if request.method == "GET" and session.get("user_id"):
+        # Double check if session is actually valid (has a profile)
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM faculty_details WHERE user_id = %s", (session["user_id"],))
+        profile = cur.fetchone()
+        conn.close()
+
+        if profile and session.get("role") == "faculty":
+            print(f"[DEBUG] Valid faculty session found for {session.get('username')}, redirecting to dashboard")
             return redirect(url_for("faculty_bp.faculty_dashboard"))
-        elif session.get("role") == "student":
-            return redirect(url_for("student_bp.student_dashboard"))
+        else:
+            print(f"[DEBUG] Profile check failed in GET /faculty/login for user_id {session.get('user_id')}. profile={profile}, role={session.get('role')}")
+            # Surgical clearing – avoid session.clear() to preserve flashes
+            session.pop("user_id", None)
+            session.pop("role", None)
+            # Let them land on the login page normally now
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
@@ -70,12 +112,34 @@ def faculty_login():
         role = "faculty"
 
         if user and check_password_hash(user["password"], password):
+            # Verify faculty details exist
+            from database import get_faculty_by_user_id
+            faculty = get_faculty_by_user_id(user["id"])
+            if not faculty:
+                print(f"[DEBUG] Login succeeded but profile missing for user_id {user['id']} ({username})")
+                flash("Faculty profile not found. Please contact administration.", "danger")
+                return render_template("faculty_login.html")
+
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             session["role"] = role
+            print(f"[DEBUG] POST /faculty/login success. user_id={session['user_id']}, role={session['role']}, name={faculty['full_name']}")
+            log_event(
+                event_type=LOGIN_SUCCESS,
+                description=f"Faculty '{username}' logged in successfully.",
+                actor_id=user["id"],
+                actor_role="faculty",
+                request=request
+            )
             return redirect(url_for("faculty_bp.faculty_dashboard"))
         else:
+            log_event(
+                event_type=LOGIN_FAILED,
+                description=f"Failed faculty login attempt for username '{username}'.",
+                metadata={"attempted_username": username},
+                request=request
+            )
             flash("Invalid Credentials.", "danger")
 
     return render_template("faculty_login.html")
@@ -100,6 +164,15 @@ def forgot_password():
         session["otp_email"]     = email
         session["otp_user_id"]   = user["id"]
         session["otp_timestamp"] = time.time()
+
+        log_event(
+            event_type=OTP_SENT,
+            description=f"Password reset OTP sent to '{email}'.",
+            actor_id=user["id"],
+            actor_role=user.get("role"),
+            metadata={"email": email},
+            request=request
+        )
 
         # Send OTP email
         try:
@@ -157,8 +230,22 @@ def verify_otp():
         if entered_otp == session.get("otp"):
             session["otp_verified"] = True
             session.pop("otp", None)
+            log_event(
+                event_type=OTP_VERIFIED,
+                description=f"OTP verified successfully for '{session.get('otp_email')}'.",
+                actor_id=session.get("otp_user_id"),
+                metadata={"email": session.get("otp_email")},
+                request=request
+            )
             return redirect(url_for("auth_bp.reset_password"))
         else:
+            log_event(
+                event_type=OTP_FAILED,
+                description=f"Incorrect OTP entered for '{session.get('otp_email')}'.",
+                actor_id=session.get("otp_user_id"),
+                metadata={"email": session.get("otp_email")},
+                request=request
+            )
             flash("Incorrect OTP. Please try again.", "danger")
 
     return render_template("verify_otp.html", email=session.get("otp_email", ""))
@@ -187,6 +274,13 @@ def reset_password():
 
         user_id = session.get("otp_user_id")
         update_user_password(user_id, new_password)
+        log_event(
+            event_type=PASSWORD_RESET,
+            description=f"Password reset successfully for user_id={user_id}.",
+            actor_id=user_id,
+            metadata={"email": session.get("otp_email")},
+            request=request
+        )
 
         for key in ["otp", "otp_email", "otp_user_id", "otp_timestamp", "otp_verified"]:
             session.pop(key, None)
@@ -199,5 +293,12 @@ def reset_password():
 # ================= LOGOUT =================
 @auth_bp.route("/logout")
 def logout():
+    log_event(
+        event_type=LOGOUT,
+        description=f"User '{session.get('username')}' logged out.",
+        actor_id=session.get("user_id"),
+        actor_role=session.get("role"),
+        request=request
+    )
     session.clear()
     return redirect(url_for("auth_bp.student_login"))

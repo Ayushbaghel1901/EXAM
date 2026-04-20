@@ -1,4 +1,8 @@
-# 📚 Online Examination and Result Management System
+# Exam Portal 🎓
+
+A robust, full-stack examination management system designed for academic institutions. The portal streamlines student enrollment, faculty subject assignment, exam creation, and real-time performance analytics using a unified design system.
+
+---
 
 ## 🤝 Collaboration
 
@@ -11,102 +15,93 @@ The system has been designed and extended to create a fully functional **Online 
 
 ---
 
-## 📌 Project Overview
+## 🏛️ System Architecture
 
-This project is a **web-based Online Examination and Result Management System** designed to streamline the process of conducting exams, managing students, and generating results efficiently. The system supports multiple user roles including **Admin, Faculty, and Students**, making the entire examination workflow automated and organized.
+The project follows a modular blueprint-based architecture using Flask for the backend and PostgreSQL (Supabase) for data persistence.
 
-## 🚀 Features
+### Data Flow Diagram (DFD)
+The system's data flow is centralized around atomic operations for high-speed bulk uploads and secure exam attempts. 
 
-* 👨‍🎓 Student Registration & Login
-* 👩‍🏫 Faculty Dashboard
-* 🛠️ Admin Panel
-* 📝 Online Exam Creation
-* ⏱️ Timed Examinations
-* 📊 Automatic Result Generation
-* 📁 Question Bank Management
-* 📌 Subject-wise Exams
-* 🔐 Secure Authentication System
-* 📈 Result Management System
+![Data Flow Diagram](diagrams/exam_portal_dfd.png)
 
-## 🧑‍💻 Tech Stack
-
-**Frontend**
-
-* HTML
-* CSS
-* JavaScript
-
-**Backend**
-
-* Python (Flask)
-
-**Database**
-
-* SQL (SQLite / MySQL)
-
-## 📂 Project Structure
-
-```
-Online-Examination-and-Result-Management-system
-│
-├── static/
-├── templates/
-├── app.py
-├── database/
-├── README.md
-└── requirements.txt
-```
-
-## 🎯 Objective
-
-The main objective of this project is to:
-
-* Reduce manual exam handling
-* Automate result calculation
-* Provide secure online exam platform
-* Improve efficiency for institutions
-* Manage students, faculty and exams in one system
-
-## ▶️ How to Run
-
-1. Clone the repository
-
-```bash
-git clone https://github.com/Ayushbaghel1901/EXAM.git
-```
-
-2. Navigate to project folder
-
-```bash
-cd EXAM
-```
-
-3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Run the Flask app
-
-```bash
-python app.py
-```
-
-5. Open in browser
-
-```
-http://127.0.0.1:5000
-```
-
-## 👨‍💻 Author
-
-**Ayush Baghel**
-GitHub: [https://github.com/Ayushbaghel1901](https://github.com/Ayushbaghel1901)
-
-## 🤝 Co-Coordinator
-
-**Diya Panjwani**
-GitHub: [https://github.com/DiyaPanjwani09](https://github.com/DiyaPanjwani09)
+*The DFD highlights the interaction between external entities (Admin, Faculty, Student) and the underlying data clusters.*
 
 ---
+
+## 🚀 Key Features
+
+### 🛠️ Administrator Panel
+- **User Management**: Granular control over Faculty and Student accounts.
+- **Bulk Import**: High-speed CSV upload engine with asynchronous batch processing.
+- **Academic Setup**: Configure departments, branches, and subjects.
+
+### 🍎 Faculty Dashboard
+- **Content Creation**: Manage a robust question bank (MCQ, Integer type).
+- **Exam Management**: Schedule exams and manage course associations.
+- **Analytics**: Built-in PowerBI-style analysis for student performance tracking.
+
+### 📝 Student Portal
+- **Interactive Dashboards**: Personalized views for upcoming exams and past results.
+- **Secure Exams**: A dedicated execution engine for attempting exams with real-time scoring.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Backend**: Python 3.x, Flask
+- **Database**: PostgreSQL (via Supabase)
+- **Styling**: Vanilla CSS (Obsidian Glass Design System)
+- **Authentication**: Custom Auth with MFA implementation for Admins.
+
+---
+
+## ⚙️ Installation & Setup
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Ayushbaghel1901/EXAM.git
+   cd Portal
+   ```
+
+2. **Set up Virtual Environment**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Environment Configuration**:
+   Create a `.env` file in the root directory and add your PostgreSQL connection string:
+   ```env
+   DATABASE_URL=postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres
+   ```
+
+5. **Run the Application**:
+   ```bash
+   python app.py
+   ```
+   *The application will be available at `http://localhost:5000`.*
+
+---
+
+## 📊 Process Flowcharts
+
+### Exam Attempt Flow (Phase 2 Logic)
+```mermaid
+graph TD
+    A[Start Exam] --> B{Valid Session?}
+    B -- No --> C[Redirect to Login]
+    B -- Yes --> D[Fetch Questions from D4]
+    D --> E[Record Attempt in D5]
+    E --> F[Student Submits Answers]
+    F --> G[Calculate Score]
+    G --> H[Update Attempt Status]
+    H --> I[End]
+```
+
+---
+*Created by Antigravity AI for the Exam Portal Project.*

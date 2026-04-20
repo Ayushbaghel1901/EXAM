@@ -218,7 +218,10 @@ body{overflow-x:hidden;overflow-y:hidden}
     <a href="{{ url_for('faculty_bp.faculty_exams') }}" class="nav-a">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exams
     </a>
-    <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a">
+    <a href="{{ url_for('faculty_bp.schedule_exam') }}" class="nav-a">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Schedule Exam
+    </a>
+        <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>Performance Analysis
     </a>
     <a href="{{ url_for('faculty_bp.faculty_results') }}" class="nav-a">
@@ -426,14 +429,14 @@ body{overflow-x:hidden;overflow-y:hidden}
         </div>
       </form>
     </div>
-    <!-- Tab 2: CSV -->
+    <!-- Tab 2: Bulk Upload -->
     <div class="tab-content" id="tab1">
       <form action="{{ url_for('faculty_bp.upload_students_csv') }}" method="POST" enctype="multipart/form-data">
         <div class="file-drop" onclick="document.getElementById('csvFile').click()">
           <svg style="width:32px;height:32px;color:var(--primary);margin:0 auto 10px;display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-          <div style="font-weight:600;margin-bottom:4px">Click to select CSV file</div>
+          <div id="fileStatus" style="font-weight:600;margin-bottom:4px">Click to select CSV or XLSX file</div>
           <div style="font-size:12px;color:var(--txt3)">Required columns: full_name, enrollment_no, password, branch, semester</div>
-          <input type="file" name="csv_file" id="csvFile" accept=".csv" style="display:none" onchange="this.parentElement.querySelector('div').textContent=this.files[0]?.name||'Click to select'">
+          <input type="file" name="csv_file" id="csvFile" accept=".csv, .xlsx" style="display:none" onchange="document.getElementById('fileStatus').textContent=this.files[0]?.name||'Click to select CSV or XLSX file'">
         </div>
         <div class="fg" style="margin-top:14px">
           <label>Assign to Course (Exam)</label>
@@ -446,7 +449,7 @@ body{overflow-x:hidden;overflow-y:hidden}
         </div>
         <div class="mact">
           <button type="button" class="btn-cancel" onclick="document.getElementById('addModal').classList.remove('open')">Cancel</button>
-          <button type="submit" class="btn-save">Upload CSV</button>
+          <button type="submit" class="btn-save">Upload & Process</button>
         </div>
       </form>
     </div>

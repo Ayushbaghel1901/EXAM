@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faculty Management | ExamPortal Admin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<style>
+  /* ── CSV Import Modal Extras ── */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 36px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .25s, background .25s;
+    background: rgba(255,255,255,.03);
+  }
+  .drop-zone.dragover { border-color: var(--accent); background: rgba(99,102,241,.08); }
+  .drop-zone-icon { font-size: 2.4rem; margin-bottom: 10px; }
+  .drop-zone p  { color: var(--text-muted); font-size: .9rem; margin: 4px 0; }
+  .drop-zone strong { color: var(--text); }
+  .upload-progress { margin-top: 18px; max-height: 220px; overflow-y: auto; }
+  .upload-progress table { width: 100%; font-size: .82rem; }
+  .upload-progress td, .upload-progress th { padding: 5px 8px; }
+  .status-ok   { color: #22c55e; font-weight: 600; }
+  .status-err  { color: #ef4444; font-weight: 600; }
+  .csv-summary { font-size: .88rem; margin-top: 10px; }
+  .csv-summary .ok  { color: #22c55e; }
+  .csv-summary .err { color: #ef4444; }
+  .btn-group { display: flex; gap: 10px; align-items: center; }
+  .btn-secondary-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: .88rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color .2s, background .2s;
+  }
+  .btn-secondary-outline:hover { border-color: var(--accent); background: rgba(99,102,241,.1); }
+  
+  /* ── Progress Bar ── */
+  .progress-container {
+    width: 100%;
+    background: rgba(255,255,255,.05);
+    border-radius: 20px;
+    height: 12px;
+    margin: 15px 0;
+    overflow: hidden;
+    display: none;
+    border: 1px solid var(--border);
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #818cf8);
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-blobs"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">🛡️</div>
+    <h1>ExamPortal</h1>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Main</div>
+    <a href="{{ url_for('admin_bp.admin_dashboard') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Overview
+    </a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Management</div>
+    <a href="{{ url_for('admin_bp.manage_faculty') }}" class="nav-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Faculty
+    </a>
+    <a href="{{ url_for('admin_bp.manage_students') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Students
+    </a>
+    <a href="{{ url_for('admin_bp.manage_subjects') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Subjects
+    </a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Security</div>
+    <a href="{{ url_for('admin_bp.view_audit_logs') }}" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2Z"/><path d="M12 6V12L16 14"/></svg>
+      Audit Logs
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <a href="{{ url_for('admin_bp.admin_logout') }}" class="nav-link danger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Faculty Management</h2>
+      <p class="page-subtitle">Register, edit, and manage faculty accounts</p>
+    </div>
+    <div class="btn-group">
+      <!-- ▼ Import CSV Button — placed LEFT of Add Faculty -->
+      <button class="btn-secondary-outline" id="importFacultyCsvBtn" title="Bulk import faculty from CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <polyline points="9 15 12 18 15 15"/>
+        </svg>
+        Import CSV
+      </button>
+      <button class="btn btn-primary" id="addFacultyBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Faculty
+      </button>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flash-list">
+        {% for category, message in messages %}
+          <li class="flash flash-{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Full Name</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Department</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faculty %}
+        <tr id="faculty-row-{{ f.id }}">
+          <td style="font-weight:600;">{{ f.full_name }}</td>
+          <td><span class="badge badge-accent">@{{ f.username }}</span></td>
+          <td style="color:var(--text-muted);">{{ f.email }}</td>
+          <td>{{ f.department }}</td>
+          <td>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm"
+                onclick="openEditModal('{{ f.id }}','{{ f.username }}','{{ f.full_name }}','{{ f.email }}','{{ f.department }}')">
+                Edit
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteFaculty('{{ f.id }}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5">
+            <div class="empty-state">
+              <div class="empty-state-icon">🎓</div>
+              No faculty registered yet. Click "Add Faculty" or import a CSV to get started.
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- ── Faculty Add/Edit Modal ── -->
+<div class="modal-overlay" id="facultyModal">
+  <div class="modal-card">
+    <h3 class="modal-title" id="modalTitle">Register New Faculty</h3>
+    <form id="facultyForm" method="POST" action="{{ url_for('admin_bp.manage_faculty') }}">
+      <input type="hidden" name="action" id="formAction" value="add">
+      <input type="hidden" name="faculty_id" id="facultyId">
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" name="full_name" id="fullName" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username (Login ID)</label>
+          <input type="text" name="username" id="username" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" id="email" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select name="department" id="department" class="form-control">
+          <option value="">— Select Department —</option>
+          {% for dept in departments %}
+            <option value="{{ dept }}">{{ dept }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" id="pwdLabel">Account Password</label>
+        <input type="password" name="password" id="password" class="form-control" placeholder="Leave blank to keep current">
+      </div>
+
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary" id="submitBtn" style="flex:2;">Create Account</button>
+        <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── CSV Import Modal (Faculty) ── -->
+<div class="modal-overlay" id="csvFacultyModal">
+  <div class="modal-card" style="max-width:600px;">
+    <h3 class="modal-title">📂 Bulk Import Faculty via CSV</h3>
+
+    <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:12px;">
+      Upload a <strong>.csv</strong> file with columns:<br>
+      <code style="background:rgba(255,255,255,.08);padding:3px 8px;border-radius:4px;font-size:.75rem;">
+        faculty_name, gender, faculty_id, email, department_name, branch_code, branch_id, courses_taught
+      </code>
+    </p>
+
+    <a href="{{ url_for('admin_bp.faculty_csv_template') }}"
+       style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;color:var(--accent);text-decoration:none;margin-bottom:16px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      ↓ Download CSV Template
+    </a>
+
+    <!-- Drag & Drop Zone -->
+    <div class="drop-zone" id="facDropZone">
+      <div class="drop-zone-icon">📄</div>
+      <strong>Drag &amp; drop your CSV file here</strong>
+      <p>or <span style="color:var(--accent);cursor:pointer;" onclick="document.getElementById('csvFacultyFileInput').click()">click to browse</span></p>
+      <p id="facFileName" style="margin-top:8px;color:var(--accent);font-size:.84rem;"></p>
+    </div>
+    <input type="file" id="csvFacultyFileInput" accept=".csv" style="display:none;">
+    
+    <!-- Progress Bar -->
+    <div class="progress-container" id="facProgressContainer">
+      <div class="progress-bar" id="facProgressBar"></div>
+    </div>
+
+    <!-- Progress / Results -->
+    <div class="upload-progress" id="facUploadProgress" style="display:none;">
+      <div class="csv-summary" id="facSummary"></div>
+      <table style="margin-top:10px;">
+        <thead>
+          <tr style="color:var(--text-muted);">
+            <th>Row</th><th>Name</th><th>Status</th><th>Detail</th>
+          </tr>
+        </thead>
+        <tbody id="facResultRows"></tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer" style="margin-top:18px;">
+      <button class="btn btn-primary" id="facUploadBtn" style="flex:2;" onclick="uploadFacultyCsv()">
+        Upload &amp; Import
+      </button>
+      <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeCsvModal('csvFacultyModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Add/Edit Faculty Modal ── */
+const modal = document.getElementById('facultyModal');
+const form  = document.getElementById('facultyForm');
+
+document.getElementById('addFacultyBtn').addEventListener('click', () => {
+  document.getElementById('modalTitle').textContent  = 'Register New Faculty';
+  document.getElementById('formAction').value        = 'add';
+  document.getElementById('facultyId').value         = '';
+  document.getElementById('password').required       = true;
+  document.getElementById('pwdLabel').textContent    = 'Account Password';
+  document.getElementById('submitBtn').textContent   = 'Create Account';
+  form.reset();
+  modal.classList.add('active');
+});
+
+function openEditModal(id, username, fullName, email, department) {
+  document.getElementById('modalTitle').textContent  = 'Edit Faculty Profile';
+  document.getElementById('formAction').value        = 'edit';
+  document.getElementById('facultyId').value         = id;
+  document.getElementById('username').value          = username;
+  document.getElementById('fullName').value          = fullName;
+  document.getElementById('email').value             = email;
+  document.getElementById('department').value        = department;
+  document.getElementById('password').required       = false;
+  document.getElementById('pwdLabel').textContent    = 'Update Password (leave blank to keep current)';
+  document.getElementById('submitBtn').textContent   = 'Save Changes';
+  modal.classList.add('active');
+}
+
+function closeModal() { modal.classList.remove('active'); }
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+function deleteFaculty(id) {
+  if (!confirm('Permanently delete this faculty member? All associated data will be removed.')) return;
+  fetch(`/admin/faculty/delete/${id}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const row = document.getElementById(`faculty-row-${id}`);
+        if (row) row.remove();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(() => alert('Network error — please try again.'));
+}
+
+/* ── CSV Import Modal (Faculty) ── */
+const csvFacModal = document.getElementById('csvFacultyModal');
+let facSelectedFile = null;
+
+document.getElementById('importFacultyCsvBtn').addEventListener('click', () => {
+  document.getElementById('facUploadProgress').style.display = 'none';
+  document.getElementById('facFileName').textContent = '';
+  document.getElementById('facResultRows').innerHTML = '';
+  document.getElementById('facSummary').innerHTML    = '';
+  document.getElementById('csvFacultyFileInput').value = '';
+  facSelectedFile = null;
+  csvFacModal.classList.add('active');
+});
+
+function closeCsvModal(id) { document.getElementById(id).classList.remove('active'); }
+csvFacModal.addEventListener('click', e => { if (e.target === csvFacModal) closeCsvModal('csvFacultyModal'); });
+
+// Drag & Drop
+const facDropZone = document.getElementById('facDropZone');
+facDropZone.addEventListener('dragover', e => { e.preventDefault(); facDropZone.classList.add('dragover'); });
+facDropZone.addEventListener('dragleave', () => facDropZone.classList.remove('dragover'));
+facDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  facDropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith('.csv')) {
+    facSelectedFile = f;
+    document.getElementById('facFileName').textContent = '📎 ' + f.name;
+  } else {
+    alert('Please drop a .csv file.');
+  }
+});
+
+document.getElementById('csvFacultyFileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) { facSelectedFile = f; document.getElementById('facFileName').textContent = '📎 ' + f.name; }
+});
+
+async function uploadFacultyCsv() {
+  if (!facSelectedFile) { alert('Please select or drop a CSV file first.'); return; }
+  const btn = document.getElementById('facUploadBtn');
+  btn.textContent = 'Processing...'; btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('csv_file', facSelectedFile);
+
+  try {
+    const res  = await fetch('/admin/faculty/bulk_upload', { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (data.error) { 
+        alert('Error: ' + data.error); 
+        btn.textContent = 'Upload & Import'; btn.disabled = false;
+        return; 
+    }
+
+    if (data.task_id) {
+        document.getElementById('facProgressContainer').style.display = 'block';
+        document.getElementById('facUploadProgress').style.display = 'block';
+        pollBulkStatus(data.task_id, 'faculty');
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+    btn.textContent = 'Upload & Import'; btn.disabled = false;
+  }
+}
+
+async function pollBulkStatus(taskId, type) {
+    const prefix = type === 'student' ? 'stu' : 'fac';
+    try {
+        const res = await fetch(`/admin/bulk_status/${taskId}`);
+        const data = await res.json();
+        
+        const progressBar = document.getElementById(`${prefix}ProgressBar`);
+        const summary = document.getElementById(`${prefix}Summary`);
+        
+        progressBar.style.width = data.progress + '%';
+        summary.innerHTML = `<span style="color:var(--accent)">⌛ Processing: ${data.current_row} / ${data.total_rows} rows...</span>`;
+
+        if (data.completed) {
+            progressBar.style.width = '100%';
+            summary.innerHTML = 
+                `<span class="ok">✓ ${data.success} entries imported!</span>` +
+                (data.skipped ? `&nbsp;&nbsp;<span style="color:#f59e0b;">⏭ ${data.skipped} skipped</span>` : '') +
+                (data.errors && data.errors.length ? `&nbsp;&nbsp;<span class="err">✗ ${data.errors.length} failed</span>` : '');
+            
+            // Show errors if any
+            if (data.errors && data.errors.length) {
+                const tbody = document.getElementById(`${prefix}ResultRows`);
+                tbody.innerHTML = data.errors.slice(0, 10).map(err => `<tr><td colspan="4" class="status-err">${err}</td></tr>`).join('');
+            }
+            
+            document.getElementById(`${prefix}UploadBtn`).textContent = 'Import Finished';
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            // Keep polling
+            setTimeout(() => pollBulkStatus(taskId, type), 1000);
+        }
+    } catch (err) {
+        console.error("Polling error:", err);
+        setTimeout(() => pollBulkStatus(taskId, type), 2000);
+    }
+}
+</script>
+</body>
+</html>
