@@ -1,4 +1,6 @@
 # Exam Portal 🎓
+![Python CI](https://github.com/Ayushbaghel1901/EXAM/actions/workflows/ci.yml/badge.svg)
+
 
 A robust, full-stack examination management system designed for academic institutions. The portal streamlines student enrollment, faculty subject assignment, exam creation, and real-time performance analytics using a unified design system.
 
