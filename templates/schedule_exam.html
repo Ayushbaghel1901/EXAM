@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule Exam | ExamPortal Faculty</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary:#6366f1;--primary-light:rgba(99,102,241,.15);
+    --cyan:#22d3ee;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;
+    --bg:#0d1117;--bg2:#161b27;--bg3:#1e2738;
+    --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.13);
+    --txt:#e2e8f0;--txt2:#94a3b8;--txt3:#64748b;
+    --sidebar:260px;--r:12px;--r-sm:8px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+  body{background:var(--bg);color:var(--txt);display:flex;min-height:100vh}
+
+  /* ── Sidebar ── */
+  .sidebar{width:var(--sidebar);background:rgba(3,7,18,.92);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:24px 16px;position:fixed;
+    left:0;top:0;height:100vh;z-index:200;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:10px;padding-bottom:20px;
+    margin-bottom:20px;border-bottom:1px solid var(--border)}
+  .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--primary),var(--cyan));
+    border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .brand-name{font-weight:700;font-size:1rem;letter-spacing:.3px}
+  .nav-sec{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--txt3);
+    text-transform:uppercase;padding:0 8px;margin:10px 0 4px}
+  .nav-a{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:var(--r-sm);
+    color:var(--txt2);font-size:13.5px;font-weight:500;text-decoration:none;
+    transition:all .2s;margin-bottom:2px;position:relative}
+  .nav-a:hover{background:rgba(255,255,255,.04);color:var(--txt)}
+  .nav-a.on{background:linear-gradient(90deg,rgba(99,102,241,.18),rgba(99,102,241,.04));
+    color:var(--txt);border:1px solid rgba(99,102,241,.2)}
+  .nav-a.on::before{content:'';position:absolute;left:0;top:15%;bottom:15%;
+    width:3px;background:linear-gradient(180deg,var(--primary),var(--cyan));border-radius:0 3px 3px 0}
+  .nav-a svg{width:17px;height:17px;flex-shrink:0}
+  .sidebar-div{height:1px;background:var(--border);margin:14px 0}
+  .nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:rgba(99,102,241,.15);
+    color:#a5b4fc;padding:2px 7px;border-radius:20px;border:1px solid rgba(99,102,241,.25)}
+
+  /* ── Main wrap ── */
+  .wrap{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh}
+  .topbar{height:62px;background:rgba(13,17,23,.8);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:100}
+  .page-title{font-size:1.05rem;font-weight:600}
+  .user-pill{display:flex;align-items:center;gap:8px;background:var(--bg3);
+    border:1px solid var(--border2);padding:6px 14px;border-radius:20px;font-size:.85rem}
+  .avatar{width:28px;height:28px;background:linear-gradient(135deg,var(--primary),var(--cyan));
+    border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+  .content{padding:32px;flex:1}
+  .section-head{margin-bottom:24px}
+  .section-head h1{font-size:1.5rem;font-weight:700;margin-bottom:4px}
+  .section-head p{color:var(--txt2);font-size:.9rem}
+
+  /* ── Flash ── */
+  .flash{padding:12px 18px;border-radius:var(--r-sm);font-size:.875rem;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .flash.success{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac}
+  .flash.danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+  .flash.warning{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#fcd34d}
+
+  /* ── Two-column layout ── */
+  .layout{display:grid;grid-template-columns:420px 1fr;gap:28px;align-items:start}
+
+  /* ── Form card ── */
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:28px}
+  .card h2{font-size:1.05rem;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+  .card h2 svg{color:var(--primary)}
+
+  .form-group{margin-bottom:18px}
+  .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--txt2);
+    text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+  .form-group input,
+  .form-group select{width:100%;background:var(--bg3);border:1px solid var(--border2);
+    border-radius:var(--r-sm);color:var(--txt);padding:10px 14px;font-size:.9rem;
+    outline:none;transition:border-color .2s}
+  .form-group input:focus,
+  .form-group select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+  .form-group select option{background:#1e293b}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .btn-submit{width:100%;padding:12px;background:linear-gradient(135deg,var(--primary),#8b5cf6);
+    border:none;border-radius:var(--r-sm);color:#fff;font-size:.95rem;font-weight:600;
+    cursor:pointer;transition:opacity .2s;margin-top:8px}
+  .btn-submit:hover{opacity:.88}
+
+  /* ── Scheduled list ── */
+  .exam-grid{display:flex;flex-direction:column;gap:14px}
+  .exam-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+    padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    transition:border-color .2s}
+  .exam-card:hover{border-color:rgba(99,102,241,.35)}
+  .exam-card-left{}
+  .exam-subject{font-size:1rem;font-weight:700;margin-bottom:4px}
+  .exam-meta{font-size:.8rem;color:var(--txt2);display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
+  .exam-meta span{display:flex;align-items:center;gap:5px}
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;
+    font-size:.75rem;font-weight:600}
+  .badge-scheduled{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.25)}
+  .badge-active{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+  .badge-completed{background:rgba(100,116,139,.15);color:var(--txt2);border:1px solid var(--border)}
+  .btn-del{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);
+    color:#f87171;padding:7px 14px;border-radius:var(--r-sm);font-size:.8rem;
+    font-weight:600;cursor:pointer;transition:all .2s}
+  .btn-del:hover{background:rgba(239,68,68,.22)}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--txt2)}
+  .empty-state svg{width:48px;height:48px;margin-bottom:12px;color:var(--txt3)}
+  .empty-state p{font-size:.9rem}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">🎓</div>
+    <span class="brand-name">ExamPortal</span>
+  </div>
+
+  <div class="nav-sec">Navigation</div>
+  <nav>
+    <a href="{{ url_for('faculty_bp.faculty_dashboard') }}" class="nav-a">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="{{ url_for('faculty_bp.faculty_students') }}" class="nav-a">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      Students
+    </a>
+    <a href="{{ url_for('faculty_bp.faculty_exams') }}" class="nav-a">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Exams
+    </a>
+    <a href="{{ url_for('faculty_bp.schedule_exam') }}" class="nav-a on">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      Schedule Exam
+      {% if scheduled %}<span class="nav-badge">{{ scheduled|length }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Analytics
+    </a>
+    <a href="{{ url_for('faculty_bp.faculty_results') }}" class="nav-a">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Results
+    </a>
+  </nav>
+
+  <div class="sidebar-div"></div>
+  <a href="{{ url_for('auth_bp.logout') }}" class="nav-a" style="color:#f87171">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+    Logout
+  </a>
+</aside>
+
+<!-- Main -->
+<div class="wrap">
+  <div class="topbar">
+    <span class="page-title">📅 Schedule Exam</span>
+    <div class="user-pill">
+      <div class="avatar">{{ faculty.full_name[0]|upper }}</div>
+      {{ faculty.full_name }}
+    </div>
+  </div>
+
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">
+          {% if cat == 'success' %}✅{% elif cat == 'danger' %}❌{% else %}⚠️{% endif %}
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="section-head">
+      <h1>Schedule an Exam</h1>
+      <p>Create a new exam slot visible to all students on the portal.</p>
+    </div>
+
+    <div class="layout">
+      <!-- FORM -->
+      <div class="card">
+        <h2>
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Exam
+        </h2>
+        <form method="POST" action="{{ url_for('faculty_bp.schedule_exam') }}">
+          <div class="form-group">
+            <label>Subject</label>
+            <select name="subject" id="subjectSelect" required>
+              <option value="" disabled selected>-- Select Subject --</option>
+              {% for s in subjects %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Exam Template (Link Questions)</label>
+            <select name="course_code" id="templateSelect" required>
+              <option value="" disabled selected>-- Select Template --</option>
+              {% for ex in existing_exams %}
+              <option value="{{ ex.course_code }}" data-subject="{{ ex.subject_name }}">
+                {{ ex.exam_name }} ({{ ex.course_code }})
+              </option>
+              {% endfor %}
+            </select>
+            <small style="color:var(--txt3); font-size: 0.7rem; margin-top: 4px; display: block;">Only exams already created in the 'Exams' tab will appear here.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Exam Date</label>
+            <input type="date" name="exam_date" required min="{{ now_date }}">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Start Time</label>
+              <input type="time" name="start_time" required>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>End Time</label>
+              <input type="time" name="end_time" required>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top:18px">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Duration (mins)</label>
+              <input type="number" name="duration" value="60" min="10" max="300" required>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Total Marks</label>
+              <input type="number" name="total_marks" value="100" min="10" max="500" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            📅 Schedule Exam
+          </button>
+        </form>
+      </div>
+
+
+      <!-- SCHEDULED LIST -->
+      <div>
+        <div class="card" style="margin-bottom:0">
+          <h2>
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            My Scheduled Exams
+            {% if scheduled %}
+            <span class="nav-badge" style="margin-left:auto">{{ scheduled|length }}</span>
+            {% endif %}
+          </h2>
+
+          {% if scheduled %}
+          <div class="exam-grid">
+            {% for ex in scheduled %}
+            <div class="exam-card">
+              <div class="exam-card-left">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+                  <span class="exam-subject">{{ ex.subject }}</span>
+                  <span class="badge badge-{{ ex.status }}">{{ ex.status|title }}</span>
+                </div>
+                <div class="exam-meta">
+                  <span>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    {{ ex.exam_date.strftime('%d %b %Y') if ex.exam_date else '—' }}
+                  </span>
+                  <span>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ ex.start_time.strftime('%H:%M') if ex.start_time else '—' }} – {{ ex.end_time.strftime('%H:%M') if ex.end_time else '—' }}
+                  </span>
+                  <span>⏱ {{ ex.duration }} mins</span>
+                  <span>📝 {{ ex.total_marks }} marks</span>
+                  <span style="color:var(--cyan)">🔗 {{ ex.course_code }}</span>
+                </div>
+              </div>
+              <form method="POST" action="{{ url_for('faculty_bp.delete_scheduled_exam', exam_id=ex.id) }}"
+                    onsubmit="return confirm('Delete this scheduled exam?')">
+                <button type="submit" class="btn-del">Delete</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <p>No exams scheduled yet.<br>Use the form to create your first one.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div><!-- /layout -->
+  </div><!-- /content -->
+</div><!-- /wrap -->
+
+<script>
+  // Set min date for date input to today
+  const dateInput = document.querySelector('input[type="date"]');
+  if (dateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
+    if (!dateInput.value) dateInput.value = today;
+  }
+
+  // Auto-calculate end time based on duration
+  const startInput = document.querySelector('input[name="start_time"]');
+  const endInput   = document.querySelector('input[name="end_time"]');
+  const durInput   = document.querySelector('input[name="duration"]');
+
+  function autoEndTime() {
+    if (!startInput.value || !durInput.value) return;
+    const [h, m] = startInput.value.split(':').map(Number);
+    const total = h * 60 + m + parseInt(durInput.value);
+    const eh = String(Math.floor(total / 60) % 24).padStart(2,'0');
+    const em = String(total % 60).padStart(2,'0');
+    endInput.value = `${eh}:${em}`;
+  }
+  startInput.addEventListener('change', autoEndTime);
+  durInput.addEventListener('input', autoEndTime);
+
+  // Filter templates based on selected subject
+  const subjectSelect  = document.getElementById('subjectSelect');
+  const templateSelect = document.getElementById('templateSelect');
+  const allTemplates   = Array.from(templateSelect.options).slice(1); // excluding placeholder
+
+  subjectSelect.addEventListener('change', () => {
+    const selSub = subjectSelect.value;
+    templateSelect.innerHTML = '<option value="" disabled selected>-- Select Template --</option>';
+    
+    allTemplates.forEach(opt => {
+      if (opt.dataset.subject === selSub) {
+        templateSelect.appendChild(opt.cloneNode(true));
+      }
+    });
+    
+    if (templateSelect.options.length === 1) {
+      const msg = document.createElement('option');
+      msg.textContent = '-- No templates for this subject --';
+      msg.disabled = true;
+      templateSelect.appendChild(msg);
+    }
+  });
+</script>
+</body>
+</html>

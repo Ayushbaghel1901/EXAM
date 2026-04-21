@@ -634,6 +634,7 @@
     function submitExam(isAuto = false) {
         if(isAuto || confirm("Are you sure you want to submit the exam?")) {
             clearInterval(timerInterval);
+            if(window.progressInterval) clearInterval(window.progressInterval);
             let score = 0;
             let correct = 0;
             let wrong = 0;
@@ -678,6 +679,26 @@
             });
         }
     }
+
+    // Live Progress Reporter
+    function reportProgressLive() {
+        let currentScore = 0;
+        examQuestions.forEach(q => {
+            if (q.selectedOption !== null) {
+                const isCorrect = q.isCorrects[q.selectedOption];
+                if (isCorrect === 1) currentScore += q.marks;
+                else currentScore -= q.negative_marks;
+            }
+        });
+
+        fetch("{{ url_for('student_bp.report_progress') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ course_code: courseCode, score: currentScore })
+        }).catch(err => console.error("Live report failed:", err));
+    }
+
+    window.progressInterval = setInterval(reportProgressLive, 30000); // Every 30 seconds
 </script>
 
 </body>

@@ -325,6 +325,12 @@ body{overflow-x:auto;overflow-y:auto}
       Exams
       <span class="nav-badge">{{ active_exams }}</span>
     </a>
+    <a href="{{ url_for('faculty_bp.schedule_exam') }}" class="nav-a">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      Schedule Exam
+      {% if live_scheduled_count > 0 %}<span class="nav-badge">{{ live_scheduled_count }}</span>{% endif %}
+    </a>
+
     <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>
       Performance Analysis
@@ -554,6 +560,38 @@ body{overflow-x:auto;overflow-y:auto}
             Full Analytics
           </a>
         </div>
+        <!-- Live Scheduled Exams -->
+        {% if live_scheduled_exams %}
+        <div class="panel" style="border-left: 4px solid var(--success);">
+          <div class="panel-hd">
+            <div class="panel-title">
+              <span class="dot" style="width:8px; height:8px; background:var(--success); border-radius:50%; display:inline-block; margin-right:8px; animation: pulse 1.5s infinite;"></span>
+              Live Scheduled Exams
+            </div>
+          </div>
+          <div class="risk-list" style="padding: 10px;">
+            {% for ex in live_scheduled_exams %}
+            <div class="risk-item" style="border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;">
+              <div style="flex: 1;">
+                <div class="risk-name" style="font-size: 14px; font-weight: 600;">{{ ex.subject }}</div>
+                <div class="risk-sub" style="font-size: 11px; color: var(--txt3);">
+                  {{ ex.exam_date }} | {{ ex.start_time }} - {{ ex.end_time }}
+                </div>
+              </div>
+              <div>
+                {% if ex.course_code %}
+                <a href="{{ url_for('faculty_bp.proctor_exam', course_code=ex.course_code) }}" class="btn btn-primary" style="font-size: 10px; padding: 6px 12px; background: var(--success);">
+                  Monitor Live 👁️
+                </a>
+                {% else %}
+                <span style="font-size: 10px; color: var(--txt3); font-style: italic;">No Template Linked</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
 
         <!-- Recent Activity -->
         <div class="panel">

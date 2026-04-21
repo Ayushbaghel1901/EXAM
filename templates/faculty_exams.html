@@ -298,6 +298,9 @@ body{overflow-x:hidden;overflow-y:hidden}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Exams
       <span class="nav-badge">{{ all_exams|length }}</span>
     </a>
+    <a href="{{ url_for('faculty_bp.schedule_exam') }}" class="nav-a">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Schedule Exam
+    </a>
     <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>Performance Analysis
     </a>
@@ -438,7 +441,10 @@ body{overflow-x:hidden;overflow-y:hidden}
                 <div style="margin-top:6px;font-size:11px;color:var(--txt3)">{{ e.attempt_count }} submission{{ 's' if e.attempt_count != 1 else '' }}</div>
               </div>
             </div>
-            <div class="exam-actions">
+              <a href="{{ url_for('faculty_bp.proctor_exam', course_code=e.course_code) }}" class="act-btn act-stats" style="background: rgba(34, 197, 94, 0.1); color: var(--success); border-color: rgba(34, 197, 94, 0.2);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                Live Proctor
+              </a>
               <button class="act-btn act-stats" onclick="toggleStats(this)" data-id="{{ e.course_code }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 Stats
@@ -564,15 +570,15 @@ body{overflow-x:hidden;overflow-y:hidden}
       <div class="fg" style="background:rgba(30,41,59,0.5);padding:16px;border-radius:var(--r-sm);border:1px solid var(--border)">
         <label style="display:block;font-size:13px;font-weight:700;color:var(--txt);margin-bottom:12px;display:flex;align-items:center;gap:8px">
           <svg style="width:14px;height:14px;color:var(--primary)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Mass Bulk Upload (Optional CSV)
+          Quick Bulk Upload (CSV / XLSX)
         </label>
         
         <div class="fg" style="margin-bottom:0">
-          <label style="font-size:10px;text-transform:none;opacity:.8">Upload Questions CSV</label>
-          <input type="file" name="csv_file" accept=".csv" style="font-size:11px;padding:6px;border:1px dashed var(--border-h);background:rgba(99,102,241,.05)">
+          <label style="font-size:10px;text-transform:none;opacity:.8">Upload Questions File</label>
+          <input type="file" name="csv_file" accept=".csv, .xlsx" style="font-size:11px;padding:6px;border:1px dashed var(--border-h);background:rgba(99,102,241,.05)">
         </div>
         <div style="font-size:9.5px;color:var(--txt3);margin-top:10px;line-height:1.4">
-          Columns: <code>questions</code>, <code>option1</code>, <code>option2</code>, <code>option3</code>, <code>option4</code>, <code>correct answer</code>, <code>difficulty</code>(easy/medium/hard).
+          Columns: <code>question_text</code>, <code>option_1</code>, <code>option_2</code>, <code>option_3</code>, <code>option_4</code>, <code>correct_answer</code>, <code>difficulty</code>.
         </div>
       </div>
 
@@ -926,21 +932,21 @@ function openUploadModal(examId, examName) {
       <h2 id="uqExamTitle">Bulk Upload Questions</h2>
       <button class="mcls" onclick="closeModal('uploadExamQuestionsModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
-    <p style="font-size: 13px; color: var(--txt2); margin-bottom: 20px;">Upload a CSV file to add questions directly to this exam. Questions will also be saved to the subject's question bank.</p>
+    <p style="font-size: 13px; color: var(--txt2); margin-bottom: 20px;">Upload a CSV or Excel (.xlsx) file to add questions directly to this exam. Questions will also be saved to the subject's question bank.</p>
     
     <form id="uploadExamForm" method="POST" enctype="multipart/form-data">
       <div class="fg">
-        <label>Select CSV File</label>
-        <input type="file" name="csv_file" accept=".csv" required>
+        <label>Select File (CSV/XLSX)</label>
+        <input type="file" name="csv_file" accept=".csv, .xlsx" required>
       </div>
 
       <div style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
         <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
           <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          CSV FORMAT HINT
+          FILE FORMAT HINT
         </div>
         <div style="font-size: 10px; color: var(--txt2); line-height: 1.5;">
-          Required columns: <code>questions</code>, <code>option1</code>, <code>option2</code>, <code>option3</code>, <code>option4</code>, <code>correct answer</code>.<br>
+          Required columns: <code>question_text</code>, <code>option_1</code>, <code>option_2</code>, <code>option_3</code>, <code>option_4</code>, <code>correct_answer</code>.<br>
           Optional: <code>difficulty</code> (easy/medium/hard), <code>section</code> (A, B, or C), <code>marks</code>.
         </div>
       </div>

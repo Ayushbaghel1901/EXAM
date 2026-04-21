@@ -41,3 +41,7 @@ Thumbs.db
 # Uploads / temp
 uploads/
 tmp/
+
+# Custom
+run.bat
+*.bat

@@ -157,6 +157,60 @@ def init_db():
         )
     """)
 
+    # ── Scheduled Exams (faculty → students visibility) ──────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS scheduled_exams (
+            id          SERIAL PRIMARY KEY,
+            subject     TEXT NOT NULL,
+            exam_date   DATE NOT NULL,
+            start_time  TIME NOT NULL,
+            end_time    TIME NOT NULL,
+            duration    INTEGER NOT NULL,
+            total_marks INTEGER NOT NULL,
+            status      TEXT NOT NULL DEFAULT 'scheduled'
+                        CHECK (status IN ('scheduled', 'active', 'completed')),
+            created_by  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at  TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_scheduled_exams_date
+            ON scheduled_exams (exam_date, status)
+    """)
+
+    # ── Audit Logs (Activity & Security Tracking) ──────────────────────────────
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id          SERIAL PRIMARY KEY,
+            event_type  TEXT NOT NULL,
+            actor_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            actor_role  TEXT,
+            target_type TEXT,
+            target_id   TEXT,
+            description TEXT,
+            ip_address  TEXT,
+            user_agent  TEXT,
+            metadata    JSONB DEFAULT '{}',
+            created_at  TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_actor
+            ON audit_logs (actor_id)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type
+            ON audit_logs (event_type)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at
+            ON audit_logs (created_at DESC)
+    """)
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_target
+            ON audit_logs (target_type, target_id)
+    """)
+
     conn.commit()
     cur.close()
     conn.close()
@@ -249,3 +303,28 @@ def add_user(username, password, role, email=None):
     conn.close()
     return new_user_id
 
+def update_scheduled_exam_statuses():
+    """Automatically transitions exam statuses based on current timestamp."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        # 1. scheduled -> active
+        cur.execute("""
+            UPDATE scheduled_exams 
+            SET status = 'active'
+            WHERE status = 'scheduled'
+              AND (exam_date + start_time) <= CURRENT_TIMESTAMP
+        """)
+        
+        # 2. active -> completed
+        cur.execute("""
+            UPDATE scheduled_exams 
+            SET status = 'completed'
+            WHERE status = 'active'
+              AND (exam_date + end_time) <= CURRENT_TIMESTAMP
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating exam statuses: {e}")
+    finally:
+        conn.close()

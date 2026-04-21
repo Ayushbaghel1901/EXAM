@@ -147,7 +147,10 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--txt);disp
     <a href="{{ url_for('faculty_bp.faculty_exams') }}" class="nav-a">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exams
     </a>
-    <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a on">
+    <a href="{{ url_for('faculty_bp.schedule_exam') }}" class="nav-a">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Schedule Exam
+    </a>
+        <a href="{{ url_for('faculty_analysis_bp.faculty_analysis') }}" class="nav-a on">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>Performance Analysis
     </a>
     <a href="{{ url_for('faculty_bp.faculty_results') }}" class="nav-a">
@@ -229,11 +232,11 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--txt);disp
         <div class="panel-hd">
           <div class="panel-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 7.07 17.07"/></svg>
-            Topic Proficiency
+            Subject Performance Comparison
           </div>
         </div>
         <div class="chart-container">
-          <canvas id="radarChart"></canvas>
+          <canvas id="subjectChart"></canvas>
         </div>
       </div>
     </div>
@@ -290,7 +293,8 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--txt);disp
 <script id="chartData" type="application/json">
 {
   "examPerformance": {{ exam_performance|tojson }},
-  "subjects": {{ subjects|tojson }}
+  "subjects": {{ subjects|tojson }},
+  "subjectPerformance": {{ subject_performance|tojson }}
 }
 </script>
 
@@ -329,32 +333,41 @@ new Chart(trendCtx, {
   }
 });
 
-// Radar Chart: Topic Proficiency
-const radarCtx = document.getElementById('radarChart').getContext('2d');
-new Chart(radarCtx, {
-  type: 'radar',
+// Horizontal Bar Chart: Subject Performance
+const subjectData = dataContainer.subjectPerformance;
+const subjectCtx = document.getElementById('subjectChart').getContext('2d');
+new Chart(subjectCtx, {
+  type: 'bar',
   data: {
-    labels: [...subjects.map(s => s.subject_name), 'Research', 'Practical', 'Theory'],
+    labels: subjectData.map(s => s.subject_name),
     datasets: [{
-      label: 'Class Proficiency',
-      data: [...subjects.map(() => 75), 65, 80, 70],
-      backgroundColor: 'rgba(6, 182, 212, 0.2)',
-      borderColor: '#06b6d4',
-      pointBackgroundColor: '#06b6d4'
+      label: 'Average Score (%)',
+      data: subjectData.map(s => (s.avg_pct || 0).toFixed(1)),
+      backgroundColor: [
+        'rgba(99, 102, 241, 0.6)',
+        'rgba(6, 182, 212, 0.6)',
+        'rgba(16, 185, 129, 0.6)',
+        'rgba(245, 158, 11, 0.6)',
+        'rgba(244, 63, 94, 0.6)'
+      ],
+      borderColor: [
+        '#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#f43f5e'
+      ],
+      borderWidth: 1.5,
+      borderRadius: 8
     }]
   },
   options: {
+    indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: { 
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c) => ` ${c.raw}% Average` } }
+    },
     scales: {
-      r: {
-        angleLines: { color: 'rgba(255,255,255,0.05)' },
-        grid: { color: 'rgba(255,255,255,0.05)' },
-        pointLabels: { color: '#9ca3af', font: { size: 10 } },
-        ticks: { display: false },
-        suggestedMin: 0, suggestedMax: 100
-      }
+      x: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b7280' } },
+      y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }
     }
   }
 });

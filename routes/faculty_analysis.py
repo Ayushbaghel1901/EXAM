@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, render_template, session, redirect, url_for, flash
+from flask import Blueprint, render_template, session, redirect, url_for, flash
 from database import get_connection
 
 faculty_analysis_bp = Blueprint('faculty_analysis_bp', __name__)
@@ -37,17 +37,18 @@ def faculty_analysis():
     placeholders = ','.join('%s' for _ in subject_ids)
     
     # 1. Exam Performance (Average Scores per Exam)
-    exam_performance = cursor.execute(f"""
+    cursor.execute(f"""
         SELECT e.exam_name, e.course_code, AVG(CAST(ea.score AS FLOAT) / e.total_marks * 100) as avg_pct, COUNT(ea.id) as attempts
         FROM exams e
         JOIN exam_attempts ea ON e.course_code = ea.course_code
         WHERE e.subject_id IN ({placeholders}) AND ea.completed = 1
-        GROUP BY e.course_code
+        GROUP BY e.course_code, e.exam_name, e.exam_date
         ORDER BY e.exam_date ASC
-    """, tuple(subject_ids)).fetchall()
+    """, tuple(subject_ids))
+    exam_performance = cursor.fetchall()
     
     # 2. Student-wise Overall Performance
-    student_performance = cursor.execute(f"""
+    cursor.execute(f"""
         SELECT sd.full_name, sd.enrollment_no, 
                AVG(CAST(ea.score AS FLOAT) / e.total_marks * 100) as avg_pct,
                COUNT(ea.id) as exams_taken,
@@ -56,18 +57,31 @@ def faculty_analysis():
         JOIN exam_attempts ea ON sd.enrollment_no = ea.enrollment_no
         JOIN exams e ON ea.course_code = e.course_code
         WHERE e.subject_id IN ({placeholders}) AND ea.completed = 1
-        GROUP BY sd.enrollment_no
+        GROUP BY sd.enrollment_no, sd.full_name
         ORDER BY avg_pct DESC
-    """, tuple(subject_ids)).fetchall()
+    """, tuple(subject_ids))
+    student_performance = cursor.fetchall()
 
-    # 3. Class Overall Average
-    class_avg_row = cursor.execute(f"""
-        SELECT AVG(CAST(ea.score AS FLOAT) / e.total_marks * 100)
+    # 3. Subject-wise Comparison
+    cursor.execute(f"""
+        SELECT s.subject_name, AVG(CAST(ea.score AS FLOAT) / e.total_marks * 100) as avg_pct
+        FROM subjects s
+        JOIN exams e ON s.id = e.subject_id
+        JOIN exam_attempts ea ON e.course_code = ea.course_code
+        WHERE s.faculty_id = %s AND ea.completed = 1
+        GROUP BY s.id, s.subject_name
+    """, (faculty["id"],))
+    subject_performance = cursor.fetchall()
+
+    # 4. Class Overall Average
+    cursor.execute(f"""
+        SELECT AVG(CAST(ea.score AS FLOAT) / e.total_marks * 100) AS overall_avg
         FROM exam_attempts ea
         JOIN exams e ON ea.course_code = e.course_code
         WHERE e.subject_id IN ({placeholders}) AND ea.completed = 1
-    """, tuple(subject_ids)).fetchone()
-    class_avg = round(class_avg_row[0], 1) if class_avg_row[0] else 0
+    """, tuple(subject_ids))
+    class_avg_row = cursor.fetchone()
+    class_avg = round(class_avg_row["overall_avg"], 1) if class_avg_row and class_avg_row["overall_avg"] else 0
 
     conn.close()
     
@@ -80,6 +94,7 @@ def faculty_analysis():
                            subjects=[dict(row) for row in subjects],
                            exam_performance=[dict(row) for row in exam_performance],
                            student_performance=student_performance_dicts,
+                           subject_performance=[dict(row) for row in subject_performance],
                            class_avg=class_avg,
                            success_rate=success_rate)
 
@@ -93,7 +108,7 @@ def faculty_exam_report(course_code):
     cursor = conn.cursor()
     
     # 1. Get Exam Details and Stats
-    exam = cursor.execute("""
+    cursor.execute("""
         SELECT e.*, s.subject_name,
                (SELECT COUNT(*) FROM exam_attempts WHERE course_code = e.course_code AND completed = 1) as total_attempts,
                (SELECT AVG(CAST(score AS FLOAT) / e.total_marks * 100) FROM exam_attempts WHERE course_code = e.course_code AND completed = 1) as avg_pct,
@@ -102,7 +117,8 @@ def faculty_exam_report(course_code):
         FROM exams e
         JOIN subjects s ON e.subject_id = s.id
         WHERE e.course_code = %s
-    """, (course_code,)).fetchone()
+    """, (course_code,))
+    exam = cursor.fetchone()
     
     if not exam:
         conn.close()
@@ -110,7 +126,7 @@ def faculty_exam_report(course_code):
         return redirect(url_for("faculty_analysis_bp.faculty_analysis"))
 
     # 2. Score Distribution (Histogram data)
-    distribution = cursor.execute("""
+    cursor.execute("""
         SELECT 
             SUM(CASE WHEN (CAST(score AS FLOAT) / %s * 100) < 40 THEN 1 ELSE 0 END) as fail,
             SUM(CASE WHEN (CAST(score AS FLOAT) / %s * 100) BETWEEN 40 AND 60 THEN 1 ELSE 0 END) as average,
@@ -118,10 +134,11 @@ def faculty_exam_report(course_code):
             SUM(CASE WHEN (CAST(score AS FLOAT) / %s * 100) >= 80 THEN 1 ELSE 0 END) as excellent
         FROM exam_attempts
         WHERE course_code = %s AND completed = 1
-    """, (exam['total_marks'], exam['total_marks'], exam['total_marks'], exam['total_marks'], course_code)).fetchone()
+    """, (exam['total_marks'], exam['total_marks'], exam['total_marks'], exam['total_marks'], course_code))
+    distribution = cursor.fetchone()
 
     # 3. List of Student Performances for this Exam
-    students = cursor.execute("""
+    cursor.execute("""
         SELECT sd.full_name, sd.enrollment_no, ea.score, 
                (CAST(ea.score AS FLOAT) / %s * 100) as pct,
                ea.attempt_time
@@ -129,7 +146,8 @@ def faculty_exam_report(course_code):
         JOIN student_details sd ON ea.enrollment_no = sd.enrollment_no
         WHERE ea.course_code = %s AND ea.completed = 1
         ORDER BY score DESC
-    """, (exam['total_marks'], course_code)).fetchall()
+    """, (exam['total_marks'], course_code))
+    students = cursor.fetchall()
 
     cursor.execute("SELECT * FROM faculty_details WHERE user_id = %s", (session["user_id"],))
     faculty = cursor.fetchone()
