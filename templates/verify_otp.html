@@ -201,11 +201,19 @@
       <button type="submit" class="btn" style="margin-top:18px;">Verify OTP</button>
     </form>
 
+    <div style="text-align: center; margin-top: 20px;">
+      <p id="resend-info" style="font-size: 13px; color: #64748b;">
+        Didn't receive the code? <br>
+        <span id="resend-timer">You can resend in <strong id="resend-seconds">60</strong>s</span>
+        <a href="{{ url_for('auth_bp.resend_otp') }}" id="resend-link" style="display: none; color: #818cf8; text-decoration: none; font-weight: 600;">Resend Code</a>
+      </p>
+    </div>
+
     <a href="{{ url_for('auth_bp.forgot_password') }}" class="back-link">← Request a new OTP</a>
   </div>
 
   <script>
-    // Countdown timer (10 min)
+    // Main OTP expiry countdown
     let seconds = 600;
     const el = document.getElementById('countdown');
     const interval = setInterval(() => {
@@ -217,6 +225,22 @@
         clearInterval(interval);
         el.textContent = 'Expired';
         el.style.color = '#ef4444';
+      }
+    }, 1000);
+
+    // Resend cooldown timer
+    let resendSecs = 60;
+    const resendTimer = document.getElementById('resend-timer');
+    const resendLink = document.getElementById('resend-link');
+    const resendSecsEl = document.getElementById('resend-seconds');
+
+    const resendInterval = setInterval(() => {
+      resendSecs--;
+      resendSecsEl.textContent = resendSecs;
+      if (resendSecs <= 0) {
+        clearInterval(resendInterval);
+        resendTimer.style.display = 'none';
+        resendLink.style.display = 'inline';
       }
     }, 1000);
   </script>

@@ -441,7 +441,13 @@ body{overflow-x:hidden;overflow-y:hidden}
                 <div style="margin-top:6px;font-size:11px;color:var(--txt3)">{{ e.attempt_count }} submission{{ 's' if e.attempt_count != 1 else '' }}</div>
               </div>
             </div>
-              <a href="{{ url_for('faculty_bp.proctor_exam', course_code=e.course_code) }}" class="act-btn act-stats" style="background: rgba(34, 197, 94, 0.1); color: var(--success); border-color: rgba(34, 197, 94, 0.2);">
+              <button class="act-btn" onclick="toggleResults('{{ e.course_code }}', this)" 
+                      id="pub-btn-{{ e.course_code }}"
+                      style="{{ 'background:rgba(16,185,129,.1);color:#34d399;border-color:rgba(16,185,129,.2)' if e.results_published else 'background:rgba(245,158,11,.1);color:#fbbf24;border-color:rgba(245,158,11,.2)' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>{{ 'Unpublish' if e.results_published else 'Publish Results' }}</span>
+              </button>
+              <a href="{{ url_for('faculty_bp.proctor_exam', course_code=e.course_code) }}" class="act-btn act-stats" style="background: rgba(34, 197, 94, 0.1); color: #34d399; border-color: rgba(34, 197, 94, 0.2);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 Live Proctor
               </a>
@@ -793,6 +799,44 @@ function toggleStats(el){
     })
     .catch(()=>{
       document.getElementById('drawer-stats-' + examId).innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#f87171;padding:12px;font-size:12px">Failed to load stats.</div>';
+    });
+}
+
+// Toggle results publication
+function toggleResults(courseCode, btn) {
+    const span = btn.querySelector('span');
+    const originalText = span.textContent;
+    span.textContent = '...';
+    
+    fetch(`/faculty/exam/toggle_results/${courseCode}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.status === 'success') {
+            if(d.new_status) {
+                btn.style.background = 'rgba(16,185,129,0.1)';
+                btn.style.color = '#34d399';
+                btn.style.borderColor = 'rgba(16,185,129,0.2)';
+                span.textContent = 'Unpublish';
+            } else {
+                btn.style.background = 'rgba(245,158,11,0.1)';
+                btn.style.color = '#fbbf24';
+                btn.style.borderColor = 'rgba(245,158,11,0.2)';
+                span.textContent = 'Publish Results';
+            }
+        } else {
+            alert('Error: ' + (d.error || 'Failed to toggle status'));
+            span.textContent = originalText;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Connection error');
+        span.textContent = originalText;
     });
 }
 

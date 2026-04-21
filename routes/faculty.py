@@ -280,7 +280,7 @@ def faculty_exams():
         placeholders = ','.join('%s' for _ in subject_ids)
         _cur.execute(f"""
             SELECT e.course_code, e.exam_name, e.exam_date, e.start_time, e.end_time, e.total_marks, e.duration_minutes,
-                   e.pass_percentage,
+                   e.pass_percentage, e.results_published,
                    s.id AS subject_id, s.subject_name, s.branch, s.semester, s.subject_code,
                    (SELECT COUNT(*) FROM exam_attempts ea WHERE ea.course_code = e.course_code AND ea.completed = 1) AS attempt_count,
                    (SELECT COUNT(*) FROM exam_questions eq WHERE eq.course_code = e.course_code) AS question_count
@@ -379,13 +379,14 @@ def create_exam():
                 if not q_ids: return []
                 return random.sample(q_ids, min(len(q_ids), count))
                 
-            selected_ids = []
-            selected_ids.extend(fetch_random_q("easy", auto_easy))
-            selected_ids.extend(fetch_random_q("medium", auto_medium))
-            selected_ids.extend(fetch_random_q("hard", auto_hard))
+            # We want to organize these into logical sections: Easy -> A, Medium -> B, Hard -> C
+            picks = []
+            picks.extend([(qid, "A") for qid in fetch_random_q("easy", auto_easy)])
+            picks.extend([(qid, "B") for qid in fetch_random_q("medium", auto_medium)])
+            picks.extend([(qid, "C") for qid in fetch_random_q("hard", auto_hard)])
             
-            for qid in selected_ids:
-                cursor.execute("INSERT INTO exam_questions (course_code, question_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (course_code, qid))
+            for qid, sec in picks:
+                cursor.execute("INSERT INTO exam_questions (course_code, question_id, section) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", (course_code, qid, sec))
 
         # 4. Auto-enroll students matching the subject's branch/semester
         cursor.execute("SELECT branch, semester FROM subjects WHERE id = %s", (subject_id,))
@@ -700,6 +701,34 @@ def get_exam_stats(course_code):
     finally:
         conn.close()
 
+@faculty_bp.route("/faculty/exam/toggle_results/<string:course_code>", methods=["POST"])
+def toggle_results(course_code):
+    if not session.get("user_id") or session.get("role") != "faculty":
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    conn = get_connection()
+    try:
+        _cur = conn.cursor()
+        # Verify ownership
+        _cur.execute("""
+            SELECT results_published FROM exams e
+            JOIN subjects s ON e.subject_id = s.id
+            WHERE e.course_code = %s AND s.faculty_id = (SELECT id FROM faculty_details WHERE user_id = %s)
+        """, (course_code, session["user_id"]))
+        exam = _cur.fetchone()
+        
+        if exam:
+            new_status = not exam["results_published"]
+            _cur.execute("UPDATE exams SET results_published = %s WHERE course_code = %s", (new_status, course_code))
+            conn.commit()
+            return jsonify({"status": "success", "new_status": new_status})
+        else:
+            return jsonify({"error": "Access denied"}), 403
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
 @faculty_bp.route("/faculty/subject/<int:subject_id>/questions")
 def manage_questions(subject_id):
     if not session.get("user_id") or session.get("role") != "faculty":
@@ -881,17 +910,28 @@ def faculty_students():
         s['subject_code'] = s['subjects'][0]['code'] if s['subjects'] else None
         students.append(s)
     
-    # Get both existing exam codes AND base subjects allocated to this faculty
+    # Get unique filter options
+    unique_branches = sorted(list(set(row['student_branch'] for row in students if row['student_branch'])))
+    unique_semesters = sorted(list(set(row['student_semester'] for row in students if row['student_semester'])))
+    unique_subjects = sorted(list(set(sub['name'] for row in students for sub in row['subjects'] if sub['name'])))
+
+    # Get subjects allocated to this faculty (for the Add Student modal)
     _cur.execute("""
         SELECT e.course_code, s.subject_name, s.branch, s.semester 
         FROM subjects s
         LEFT JOIN exams e ON s.id = e.subject_id
         WHERE s.faculty_id = %s
     """, (faculty["id"],))
-    subjects = _cur.fetchall()
+    all_subjects = _cur.fetchall()
     
     conn.close()
-    return render_template("faculty_students.html", faculty=faculty, students=students, subjects=subjects)
+    return render_template("faculty_students.html", 
+                         faculty=faculty, 
+                         students=students, 
+                         subjects=all_subjects,
+                         filter_branches=unique_branches,
+                         filter_semesters=unique_semesters,
+                         filter_subjects=unique_subjects)
 
 # ── STUDENT MANAGEMENT ROUTES ──
 
@@ -1473,9 +1513,20 @@ def schedule_exam():
                     (subject, course_code, exam_date, start_time, end_time, duration, total_marks, status, created_by)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, 'scheduled', %s)
             """, (subject, course_code, exam_date, start_time, end_time, duration, total_marks, session["user_id"]))
+            
+            # Sync the main exams table as well
+            # Join exam_date with start_time and end_time for compatibility with student.py's parse_dt
+            full_start = f"{exam_date} {start_time}"
+            full_end = f"{exam_date} {end_time}"
+            cur2.execute("""
+                UPDATE exams 
+                SET exam_date = %s, start_time = %s, end_time = %s, total_marks = %s, duration_minutes = %s
+                WHERE course_code = %s
+            """, (exam_date, full_start, full_end, total_marks, duration, course_code))
+            
             conn2.commit()
             conn2.close()
-            flash(f"{subject} exam ({course_code}) scheduled successfully!", "success")
+            flash(f"{subject} exam ({course_code}) scheduled successfully and synced!", "success")
         except Exception as e:
             flash(f"Error scheduling exam: {str(e)}", "danger")
 
@@ -1501,10 +1552,18 @@ def delete_scheduled_exam(exam_id):
     conn = get_connection()
     try:
         cur = conn.cursor()
+        # Find the course_code first for syncing
+        cur.execute("SELECT course_code FROM scheduled_exams WHERE id = %s", (exam_id,))
+        exam_row = cur.fetchone()
+        
         cur.execute(
             "DELETE FROM scheduled_exams WHERE id = %s AND created_by = %s",
             (exam_id, session["user_id"])
         )
+        
+        # Optional: We could reset the exams table date, but maybe better to keep it
+        # as a record of the last scheduled time.
+        
         conn.commit()
         flash("Scheduled exam deleted.", "success")
     except Exception as e:

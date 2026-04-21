@@ -3,703 +3,602 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Main - Exam Interface</title>
+    <title>{{ exam.exam_name }} | Exam Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #337ab7;
-            --header-bg: #333; /* Darker header */
-            --header-text: #fff;
-            --q-palette-bg: #e5f2ff; /* Light blue for palette area */
-            --visited-color: #d9534f; /* Red */
-            --answered-color: #5cb85c; /* Green */
-            --review-color: #6f42c1; /* Purple */
-            --ans-review-color: #6610f2; /* Darker Purple for Answered & Marked for Review */
-            --not-visited-color: #e0e0e0; /* Gray */
-            --border-color: #ccc;
+            --primary: #3b82f6;
+            --bg-body: #f1f5f9;
+            --bg-sidebar: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --not-visited: #ffffff;
+            --not-answered: #ef4444; /* Red */
+            --answered: #22c55e;     /* Green */
+            --marked: #8b5cf6;       /* Purple */
+            --marked-answered: #8b5cf6; /* Purple with tick (handled in CSS) */
         }
-        
-        * { box-sizing: border-box; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            background-color: #f9f9f9;
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
-        /* Header */
-        header {
-            background-color: var(--header-bg);
-            color: var(--header-text);
-            padding: 10px 20px;
+        /* Top Header */
+        .header {
+            height: 60px;
+            background: #2563eb;
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 60px;
+            padding: 0 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 100;
         }
-        .exam-title { 
-            font-size: 1.2rem; 
-            font-weight: bold; 
-        }
-        .candidate-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .candidate-img {
-            width: 40px;
-            height: 40px;
-            background-color: #ccc;
-            border-radius: 50%; /* Circular avatar */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-        }
+        .header h1 { font-family: 'Outfit'; font-size: 1.1rem; }
 
-        /* Main Layout */
-        .container-fluid {
-            display: flex;
+        /* Main Content Area */
+        .main-container {
             flex: 1;
-            height: calc(100vh - 60px); /* Subtract header height */
+            display: grid;
+            grid-template-columns: 1fr 320px;
             overflow: hidden;
         }
 
-        /* Left Side: Question Area */
-        .question-area {
-            flex: 3; /* 75% width */
+        /* Left Side: Question Display */
+        .question-panel {
             display: flex;
             flex-direction: column;
-            border-right: 1px solid var(--border-color);
+            background: white;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .section-tabs {
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            padding: 0 10px;
+        }
+        .tab {
+            padding: 12px 24px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+        }
+        .tab.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
             background: white;
         }
-        
-        .q-header {
-            padding: 10px 20px;
-            border-bottom: 2px solid var(--primary-color);
+
+        .question-content {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+        }
+
+        .q-number-label {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .q-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-item:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .option-item.selected { 
+            border-color: var(--primary); 
+            background: #eff6ff; 
+            box-shadow: 0 0 0 1px var(--primary);
+        }
+
+        .opt-radio {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .option-item.selected .opt-radio {
+            border-color: var(--primary);
+        }
+        .option-item.selected .opt-radio::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        /* Bottom Controls */
+        .bottom-bar {
+            height: 70px;
+            background: #f8fafc;
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: bold;
-            background: #fff;
+            padding: 0 30px;
         }
-        
-        .q-body {
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: 0.2s;
+        }
+        .btn-white { background: white; color: #334155; }
+        .btn-white:hover { background: #f1f5f9; }
+        .btn-primary { background: #2563eb; color: white; border-color: #2563eb; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-purple { background: #7c3aed; color: white; border-color: #7c3aed; }
+        .btn-purple:hover { background: #6d28d9; }
+        .btn-success { background: #16a34a; color: white; border-color: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+
+        /* Right Side: Palette */
+        .right-panel {
+            background: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .user-profile {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: #cbd5e1;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #64748b;
+        }
+        .user-name { font-size: 0.9rem; font-weight: 600; }
+
+        .palette-scroll {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            font-size: 16px;
-            line-height: 1.6;
         }
 
-        .options-container {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .option-label {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .option-label:hover {
-            background-color: #f0f8ff;
-        }
-        .option-label input {
-            margin-right: 10px;
-        }
-
-        .q-footer {
-            padding: 15px 20px;
-            border-top: 1px solid var(--border-color);
-            background: #f5f5f5;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        .btn-success { background-color: var(--answered-color); color: white; border-color: #4cae4c; }
-        .btn-success:hover { background-color: #449d44; }
-        
-        .btn-warning { background-color: var(--review-color); color: white; border-color: #6f42c1; }
-        .btn-warning:hover { background-color: #5a32a3; } /* Darker purple */
-        
-        .btn-default { background-color: white; color: #333; border-color: #ccc; }
-        .btn-default:hover { background-color: #e6e6e6; }
-        
-        .btn-primary { background-color: var(--primary-color); color: white; border-color: #2e6da4; }
-        .btn-primary:hover { background-color: #286090; }
-
-        .btn-danger { background-color: #d9534f; color: white; border-color: #d43f3a; } /* Submit btn */
-
-        /* Right Side: Sidebar */
-        .sidebar {
-            flex: 1; /* 25% width */
-            display: flex;
-            flex-direction: column;
-            background-color: #fdfdfd;
-            min-width: 300px; /* Ensure sidebar doesn't get too small */
-        }
-
-        .timer-box {
-            background: #fff; /* White background for contrast */
-            padding: 15px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .timer-display {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-        .time-left-label {
-            font-size: 12px;
-            color: #777;
-            text-transform: uppercase;
-        }
-
-        .candidate-profile {
-            padding: 10px;
-            background: #e5f2ff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .candidate-profile img {
-            width: 50px;
-            height: 50px;
-            border-radius: 4px;
-            background: #ccc;
-        }
-
-        .legend {
-            padding: 10px;
+        .legend-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 12px;
-            background: #fff;
-            border-bottom: 1px solid var(--border-color);
+            gap: 10px;
+            margin-bottom: 25px;
         }
-        .legend-item {
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-muted); }
+        
+        /* JEE Styled Status Shapes */
+        .status-box {
+            width: 32px;
+            height: 28px;
             display: flex;
             align-items: center;
-            gap: 5px;
-        }
-        .legend-icon {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%; /* Circular icons */
-            display: flex;
             justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid #cbd5e1;
+            position: relative;
+        }
+        .s-not-visited { background: white; border-radius: 2px; }
+        .s-not-answered { background: url('https://www.nta.ac.in/img/Quiz/not-answered.png') center/100% 100%; border:none; color:white; padding-top:2px; }
+        .s-answered { background: url('https://www.nta.ac.in/img/Quiz/answered.png') center/100% 100%; border:none; color:white; padding-top:2px; }
+        .s-marked { background: url('https://www.nta.ac.in/img/Quiz/marked.png') center/100% 100%; border:none; color:white; border-radius: 50%; }
+        .s-marked-answered { background: url('https://www.nta.ac.in/img/Quiz/marked-answered.png') center/100% 100%; border:none; color:white; border-radius: 50%; }
+        .s-marked-answered::after {
+            content: '✓';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background: #22c55e;
+            color: white;
+            font-size: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: flex;
             align-items: center;
-            font-size: 10px;
-            color: white;
-            font-weight: bold;
+            justify-content: center;
+            border: 1px solid white;
         }
-        .legend-icon.answered { background: var(--answered-color); clip-path: polygon(0% 0%, 100% 0%, 100% 80%, 50% 100%, 0% 80%); border-radius: 0; height: 20px; width: 24px; } /* Shape */
-        .legend-icon.answered { background: var(--answered-color); border-top-left-radius: 10px; border-top-right-radius: 10px; } /* Simple Green */
-        .legend-icon.not-answered { background: var(--visited-color); border-top-left-radius: 10px; border-top-right-radius: 10px;}
-        .legend-icon.not-visited { background: var(--not-visited-color); color: #333; border: 1px solid #ccc; border-top-left-radius: 10px; border-top-right-radius: 10px; }
-        .legend-icon.review { background: var(--review-color); border-radius: 50%; }
-        .legend-icon.ans-review { background: var(--ans-review-color); border-radius: 50%; position: relative; }
-        .legend-icon.ans-review::after { content: '✔'; position: absolute; font-size: 8px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
 
-        /* Actual shape refinement for JEE look */
-        .legend-icon { width: 25px; height: 25px; border-radius: 0; }
-        .legend-icon.answered { background: var(--answered-color); border-radius: 0 15px 0 15px; } /* Shape approx */
-        .legend-icon.not-answered { background: var(--visited-color); border-radius: 0 0 15px 15px; }
-        .legend-icon.not-visited { background: var(--not-visited-color); color: black; border-radius: 5px; }
-        .legend-icon.review { background: var(--review-color); border-radius: 50%; }
-        .legend-icon.ans-review { background: var(--ans-review-color); border-radius: 50%; }
+        /* Fallbacks if NTA images fail */
+        .status-fallback.s-not-visited { background: #fff; }
+        .status-fallback.s-not-answered { background: #ef4444; color: white; border-radius: 10px 10px 0 0; }
+        .status-fallback.s-answered { background: #22c55e; color: white; border-radius: 0 0 10px 10px; }
+        .status-fallback.s-marked { background: #8b5cf6; color: white; border-radius: 50%; }
 
-        .palette-container {
-            flex: 1;
-            padding: 15px;
-            background: var(--q-palette-bg);
-            overflow-y: auto;
-        }
-        .palette-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            background: #337ab7;
-            color: white;
-            padding: 5px 10px;
-        }
         .palette-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr); /* 5 buttons per row */
-            gap: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
         }
-        .palette-btn {
-            width: 35px;
-            height: 30px;
-            border: 1px solid #ccc;
-            background: var(--not-visited-color);
-            cursor: pointer;
-            font-weight: bold;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 4px;
-            transition: transform 0.1s;
-        }
-        .palette-btn:hover {
-            transform: scale(1.1);
-            border-color: #999;
-        }
-        .palette-btn.current {
-           border: 2px solid #000;
-        }
-
-        .palette-btn.answered { background: var(--answered-color); color: white; border-color: #4cae4c; border-radius: 0 15px 0 15px; }
-        .palette-btn.not-answered { background: var(--visited-color); color: white; border-color: #d43f3a; border-radius: 0 0 15px 15px; }
-        .palette-btn.review { background: var(--review-color); color: white; border-color: #6f42c1; border-radius: 50%; }
-        .palette-btn.ans-review { background: var(--ans-review-color); color: white; border-color: #563d7c; border-radius: 50%; position: relative;}
-        .palette-btn.ans-review::after { content: '✔'; font-size: 10px; position: absolute; top: -2px; right: -2px; background: green; color: white; border-radius: 50%; width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;}
-
-
-        .sidebar-footer {
-            padding: 15px;
-            background: #e5f2ff; /* Consistent */
-            border-top: 1px solid var(--border-color);
-            text-align: center;
-        }
-        .submit-btn {
+        .q-nav-btn {
             width: 100%;
-            padding: 12px;
-            font-size: 16px; 
-            border-radius: 4px;
+            aspect-ratio: 1.1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #cbd5e1;
+            transition: opacity 0.2s;
         }
-        
+        .q-nav-btn:hover { opacity: 0.8; }
+        .q-nav-btn.active { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+        .submit-section {
+            padding: 20px;
+            background: #f8fafc;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Confirmation Modal */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false">
 
-<header>
-    <div class="exam-title">JEE (Main) Mock Test - 2026</div>
-    <div class="candidate-info">
-        <span>Welcome, <b id="candidateName">Candidate</b></span>
-        <div class="candidate-img">User</div>
-    </div>
-</header>
-
-<div class="container-fluid">
-    <!-- Left Question Area -->
-    <div class="question-area">
-        <div class="q-header">
-            <span>Question No. <span id="qNo">1</span></span>
-            <span>Marks: +4 / -1</span>
+    <header class="header">
+        <div style="display: flex; flex-direction: column;">
+            <h1>{{ exam.exam_name }}</h1>
+            <div style="font-size: 0.8rem; opacity: 0.9;">{{ subject_name }}</div>
         </div>
-
-        <!-- Section Tabs -->
-        <div class="section-tabs" style="padding: 10px 20px; background: #f0f0f0; border-bottom: 1px solid #ddd; display: flex; gap: 10px;">
-            <button class="btn btn-primary" id="btnSecA" onclick="switchSection('A')">Section A</button>
-            <button class="btn btn-default" id="btnSecB" onclick="switchSection('B')">Section B</button>
-            <button class="btn btn-default" id="btnSecC" onclick="switchSection('C')">Section C</button>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div id="timer" style="font-family: monospace; font-size: 1.2rem; font-weight: 700; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 4px;">--:--:--</div>
         </div>
-        
-        <div class="q-body" id="qBody">
-            <h3 id="qtext">Loading Question...</h3>
-            <div class="options-container" id="options">
-                <!-- Options injected by JS -->
+    </header>
+
+    <div class="main-container">
+        <!-- Question Panel -->
+        <div class="question-panel">
+            <div class="section-tabs" id="subjectTabs">
+                <!-- Grouped by subject automatically in JS -->
+                <div class="tab active" data-subject="All Subjects">Subject Section</div>
+            </div>
+
+            <div class="question-content" id="qDisplay">
+                <div id="noQuestion" style="display: none; text-align: center; color: var(--text-muted); margin-top: 100px;">
+                    Select a question from the palette.
+                </div>
+                <!-- Questions injected by JS -->
+            </div>
+
+            <div class="bottom-bar">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-purple" onclick="handleAction('mark_review')">Mark for Review & Next</button>
+                    <button class="btn btn-white" onclick="handleAction('clear')">Clear Response</button>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="handleAction('save_next')">Save & Next</button>
+                    <!-- <button class="btn btn-white" onclick="navigate(-1)">Previous</button> -->
+                </div>
             </div>
         </div>
 
-        <div class="q-footer">
-            <div>
-                <button class="btn btn-default" onclick="clearResponse()">Clear Response</button>
-                <button class="btn btn-warning" onclick="markReviewNext()">Mark for Review & Next</button>
+        <!-- Right Side Sidebar -->
+        <div class="right-panel">
+            <div class="user-profile">
+                <div class="user-avatar" id="userInitial">{{ (student.full_name or "S")[0].upper() }}</div>
+                <div class="user-info">
+                    <div class="user-name" id="userName">{{ student.full_name }}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);" id="enrollNo">{{ student.enrollment_no }}</div>
+                </div>
             </div>
-            <div>
-                <button class="btn btn-success" onclick="saveAndNext()">Save & Next</button>
+
+            <div class="palette-scroll">
+                <div class="legend-grid">
+                    <div class="legend-item"><div class="status-box s-answered">0</div> Answered</div>
+                    <div class="legend-item"><div class="status-box s-not-answered">0</div> Not Answered</div>
+                    <div class="legend-item"><div class="status-box s-not-visited">0</div> Not Visited</div>
+                    <div class="legend-item"><div class="status-box s-marked">0</div> Marked for Review</div>
+                    <div class="legend-item" style="grid-column: span 2;">
+                        <div class="status-box s-marked-answered">0</div> Answered & Marked for Review
+                    </div>
+                </div>
+
+                <div class="section-title" id="currentSectionName">Question Palette</div>
+                <div class="palette-grid" id="paletteGrid">
+                    <!-- Nav buttons injected by JS -->
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Right Sidebar -->
-    <div class="sidebar">
-        <div class="timer-box">
-            <div class="time-left-label">Time Left</div>
-            <div class="timer-display" id="timer">00:00:00</div>
-        </div>
-
-        <div class="candidate-profile">
-            <div style="width: 40px; height: 40px; background: #999; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">Img</div>
-            <div>
-                <div style="font-weight: bold; font-size: 14px;" id="sidebarName">Candidate Name</div>
+            <div class="submit-section">
+                <button class="btn btn-success" style="width: 100%;" onclick="openSubmitModal()">Submit</button>
             </div>
-        </div>
-
-        <div class="legend">
-            <div class="legend-item"><div class="legend-icon answered"></div> Answered</div>
-            <div class="legend-item"><div class="legend-icon not-answered"></div> Not Answered</div>
-            <div class="legend-item"><div class="legend-icon not-visited"></div> Not Visited</div>
-            <div class="legend-item"><div class="legend-icon review"></div> Marked for Review</div>
-            <div class="legend-item"><div class="legend-icon ans-review"></div> Ans & Marked for Review</div>
-        </div>
-
-        <div class="palette-container">
-            <div class="palette-title">Question Palette - Section <span id="currentSectionDisplay">A</span></div>
-            <div class="palette-grid" id="qPalette">
-                <!-- Palette buttons injected by JS -->
-            </div>
-        </div>
-
-        <div class="sidebar-footer">
-            <button class="btn btn-primary" onclick="submitExam()" style="background-color: #337ab7; width: 100%;">Submit Test</button>
         </div>
     </div>
-</div>
 
-<script id="server-questions-data" type="application/json">
-    {{ questions | tojson }}
-</script>
-<script id="exam-config" type="application/json">
-{
-    "courseCode": {{ (exam.course_code if exam else None) | tojson }},
-    "subjectName": {{ subject_name | tojson }},
-    "totalTime": {{ (exam.duration_minutes * 60 if exam and exam.duration_minutes else 10800) | tojson }}
-}
-</script>
-<script>
-    const examConfig = JSON.parse(document.getElementById('exam-config').textContent);
-    const courseCode = examConfig.courseCode;
-    const subjectNameServer = examConfig.subjectName;
-    const totalTime = examConfig.totalTime;
-    let timeLeft = totalTime;
-    let timerInterval;
-    let currentSection = 'A';
-    let currentQIndex = 0;
-    let examQuestions = [];  
-    let tabSwitchCount = 0;
-    const MAX_TAB_SWITCHES = 2;
-    
-    // Server Questions from data tag
-    const serverQuestionsData = document.getElementById('server-questions-data');
-    const serverQuestions = serverQuestionsData ? JSON.parse(serverQuestionsData.textContent) : [];
-    
-    if (serverQuestions && serverQuestions.length > 0) {
-        serverQuestions.forEach((q, index) => {
-            let i = index + 1;
-            let sec = q.section || 'A';
-            
-            examQuestions.push({
-                idx: index,
-                id: i,
-                db_id: q.id,
-                section: sec,
-                text: q.question_text,
-                options: q.options ? q.options.map(o => o.option_text) : [],
-                optionIds: q.options ? q.options.map(o => o.id) : [],
-                isCorrects: q.options ? q.options.map(o => o.is_correct) : [],
-                marks: q.marks || 4,
-                negative_marks: q.negative_marks || 0,
-                status: 0, 
-                selectedOption: null 
-            });
-        });
-    }
+    <!-- Submit Modal -->
+    <div class="modal" id="submitModal">
+        <div class="modal-card">
+            <h2 style="margin-bottom: 15px;">Exam Summary</h2>
+            <div id="summaryTable" style="margin-bottom: 25px; line-height: 2;">
+                <!-- Summary injected -->
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                Are you sure you want to submit your exam? You won't be able to change your answers after this.
+            </p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-white" onclick="closeSubmitModal()">Cancel</button>
+                <button class="btn btn-success" onclick="finalSubmit()">Final Submit</button>
+            </div>
+        </div>
+    </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-        startTimer();
-        const subject = subjectNameServer || localStorage.getItem("examSubject") || "Mock Test";
-        document.querySelector(".exam-title").innerText = `${subject}`;
-        
-        const name = localStorage.getItem("studentName") || "Candidate";
-        document.getElementById("candidateName").innerText = name;
-        document.getElementById("sidebarName").innerText = name;
-        
-        switchSection('A');
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-    });
+    <script>
+        // Data injected from Flask
+        const questions = {{ questions|tojson }};
+        const totalTime = {{ exam.duration_minutes }} * 60;
+        const examId = "{{ exam.id }}";
+        const courseCode = "{{ exam.course_code }}";
 
-    function handleVisibilityChange() {
-        if (document.hidden) {
-            tabSwitchCount++;
-            if (tabSwitchCount >= MAX_TAB_SWITCHES) {
-                alert("You have violated the exam rules by switching tabs. Disqualifying.");
-                blacklistUser();
-            } else {
-                alert(`Warning! Tab switch detected. Warnings left: ${MAX_TAB_SWITCHES - tabSwitchCount}`);
+        // Grouping logic for Sections (A=Easy, B=Medium, C=Hard)
+        const sectionsSet = new Set();
+        questions.forEach(q => {
+            // Assign a default section if missing (for fallback bank picks)
+            if (!q.section) {
+                if (q.difficulty === 'easy') q.section = 'A';
+                else if (q.difficulty === 'medium') q.section = 'B';
+                else if (q.difficulty === 'hard') q.section = 'C';
+                else q.section = 'A';
             }
-        }
-    }
-
-    function blacklistUser() {
-        clearInterval(timerInterval);
-        fetch("{{ url_for('student_bp.blacklist_student') }}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ course_code: courseCode })
-        }).then(() => {
-            window.location.href = "{{ url_for('student_bp.student_dashboard') }}";
-        }).catch(() => {
-            window.location.href = "{{ url_for('student_bp.student_dashboard') }}";
+            sectionsSet.add(q.section);
         });
-    }
+        const sections = Array.from(sectionsSet).sort();
 
-    function startTimer() {
-        const timerEl = document.getElementById("timer");
-        timerInterval = setInterval(() => {
-            if(timeLeft <= 0) {
-                clearInterval(timerInterval);
-                submitExam(true); // Auto-submit without confirm
-                return;
-            }
-            timeLeft--;
-            
-            const h = Math.floor(timeLeft / 3600);
-            const m = Math.floor((timeLeft % 3600) / 60);
-            const s = timeLeft % 60;
-            
-            timerEl.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            
-            if (timeLeft < 300) { // last 5 mins
-                timerEl.style.color = "red";
-            }
-        }, 1000);
-    }
+        // State Tracking
+        const state = questions.map(() => ({ status: 0, answer: null }));
+        let currentIdx = 0;
+        let activeSection = sections[0];
+        let timeLeft = totalTime;
 
-    function switchSection(sec) {
-        currentSection = sec;
-        
-        ['A', 'B', 'C'].forEach(s => {
-            const btn = document.getElementById(`btnSec${s}`);
-            btn.classList.toggle('btn-primary', s === sec);
-            btn.classList.toggle('btn-default', s !== sec);
-        });
-        
-        const firstQ = examQuestions.find(q => q.section === sec);
-        if(firstQ) {
-            loadQuestion(examQuestions.indexOf(firstQ));
-        } else {
-            // No questions in this section
-            document.getElementById("qNo").innerText = "-";
-            document.getElementById("qtext").innerText = "No questions in this section.";
-            document.getElementById("options").innerHTML = "";
+        // Initialize UI
+        function init() {
+            renderTabs();
             renderPalette();
-        }
-    }
-
-    function loadQuestion(index) {
-        const optionsDiv = document.getElementById("options");
-        if(index < 0 || index >= examQuestions.length) {
-            optionsDiv.innerHTML = "";
-            return;
-        }
-        
-        const targetQ = examQuestions[index];
-        if(targetQ.section !== currentSection) {
-            currentSection = targetQ.section;
-            switchSection(currentSection);
-            return; 
+            showQuestion(0);
+            startTimer();
+            updateLegendCounts();
         }
 
-        currentQIndex = index;
-        const q = examQuestions[index];
-        if(q.status === 0) q.status = 1; 
-        
-        document.getElementById("qNo").innerText = q.id;
-        document.getElementById("qtext").innerText = `[Section ${q.section}] ${q.text}`;
-        
-        optionsDiv.innerHTML = "";
-        
-        q.options.forEach((opt, idx) => {
-            const wrapper = document.createElement("label");
-            wrapper.className = "option-label";
-            
-            const radio = document.createElement("input");
-            radio.type = "radio";
-            radio.name = "option";
-            radio.value = idx;
-            if (q.selectedOption === idx) {
-                radio.checked = true;
-                wrapper.style.backgroundColor = "#dff0d8"; // Highlight selected
-            }
-            
-            radio.onchange = () => selectOption(idx);
-            
-            wrapper.appendChild(radio);
-            wrapper.appendChild(document.createTextNode(opt));
-            optionsDiv.appendChild(wrapper);
-        });
-        
-        renderPalette();
-    }
-
-    function selectOption(optIndex) {
-        examQuestions[currentQIndex].selectedOption = optIndex;
-        // Highlight logic
-        const labels = document.querySelectorAll(".option-label");
-        labels.forEach(l => l.style.backgroundColor = "");
-        labels[optIndex].style.backgroundColor = "#dff0d8";
-    }
-
-    function saveAndNext() {
-        const q = examQuestions[currentQIndex];
-        if (q.selectedOption !== null) {
-             q.status = 2; // Answered
-        } else {
-             q.status = 1; // Not Answered
+        function renderTabs() {
+            const container = document.getElementById('subjectTabs');
+            container.innerHTML = sections.map(s => {
+                let label = "Section " + s;
+                if (s === 'A') label += " (Easy)";
+                if (s === 'B') label += " (Medium)";
+                if (s === 'C') label += " (Hard)";
+                
+                return `
+                    <div class="tab ${s === activeSection ? 'active' : ''}" onclick="switchSection('${s}')">
+                        ${label}
+                    </div>
+                `;
+            }).join('');
         }
-        
-        // Find next question in this section
-        // or just next index? JEE usually allows going to next section via Next button if at end of section.
-        nextQ();
-    }
 
-    function clearResponse() {
-        const q = examQuestions[currentQIndex];
-        q.selectedOption = null;
-        q.status = 1; // Not Answered
-        loadQuestion(currentQIndex); 
-    }
-
-    function markReviewNext() {
-        const q = examQuestions[currentQIndex];
-        if (q.selectedOption !== null) {
-            q.status = 4; // Answered & Marked for Review
-        } else {
-            q.status = 3; // Marked for Review without answer
+        function switchSection(section) {
+            activeSection = section;
+            renderTabs();
+            // Show the first question that belongs to this section
+            const firstIdx = questions.findIndex(q => q.section === section);
+            if (firstIdx !== -1) showQuestion(firstIdx);
+            renderPalette(); // Refresh palette to show questions of new section
         }
-        nextQ();
-    }
 
-    function nextQ() {
-        // Logic: Go to next question. If end of section, ask to switch? or just switch?
-        // Simple logic: just increment index
-        if (currentQIndex < examQuestions.length - 1) {
-            loadQuestion(currentQIndex + 1);
-        } else {
-            alert("This is the last question of the exam.");
-        }
-    }
-
-    function prevQ() { // Not currently bound to a button in new UI but good to have
-        if (currentQIndex > 0) {
-            loadQuestion(currentQIndex - 1);
-        }
-    }
-
-    function renderPalette() {
-        const palette = document.getElementById("qPalette");
-        palette.innerHTML = "";
-        
-        // Filter palette items by current section
-        const sectionQuestions = examQuestions.filter(q => q.section === currentSection);
-        
-        sectionQuestions.forEach((q) => {
-            const globalIndex = examQuestions.indexOf(q);
-            const btn = document.createElement("div");
-            btn.className = "palette-btn";
-            btn.innerText = q.id;
-            
-            // Add status class
-            if (q.status === 0) btn.classList.add("not-visited");
-            else if (q.status === 1) btn.classList.add("not-answered");
-            else if (q.status === 2) btn.classList.add("answered");
-            else if (q.status === 3) btn.classList.add("review");
-            else if (q.status === 4) btn.classList.add("ans-review");
-            
-            if (globalIndex === currentQIndex) {
-                 btn.classList.add("current"); 
-            }
-
-            btn.onclick = () => loadQuestion(globalIndex);
-            palette.appendChild(btn);
-        });
-    }
-
-    function submitExam(isAuto = false) {
-        if(isAuto || confirm("Are you sure you want to submit the exam?")) {
-            clearInterval(timerInterval);
-            if(window.progressInterval) clearInterval(window.progressInterval);
-            let score = 0;
-            let correct = 0;
-            let wrong = 0;
-            let unattempted = 0;
-            
-            examQuestions.forEach(q => {
-                if (q.selectedOption !== null) {
-                    const isCorrect = q.isCorrects[q.selectedOption];
-                    if (isCorrect === 1) {
-                        score += q.marks;
-                        correct++;
-                    } else {
-                        score -= q.negative_marks;
-                        wrong++;
-                    }
-                } else {
-                    unattempted++;
-                }
+        function renderPalette() {
+            const grid = document.getElementById('paletteGrid');
+            grid.innerHTML = '';
+            questions.forEach((q, i) => {
+                if (q.section !== activeSection) return;
+                const btn = document.createElement('div');
+                // Continuity: "i + 1" uses the global index across the entire exam
+                btn.className = `palette-btn s-${getPaletteStatusClass(i)}`;
+                btn.innerText = i + 1;
+                btn.onclick = () => showQuestion(i);
+                grid.appendChild(btn);
             });
-            
-            const resultData = {
-                score: score,
-                total: examQuestions.length,
-                correct: correct,
-                wrong: wrong,
-                unattempted: unattempted,
-                percentage: examQuestions.length > 0 ? Math.round((correct / examQuestions.length) * 100) : 0
-            };
-            localStorage.setItem("examResult", JSON.stringify(resultData));
-            
+            document.getElementById('currentSectionName').innerText = "Section " + activeSection + " Palette";
+        }
+
+        function getPaletteStatusClass(idx) {
+            const s = state[idx];
+            if (s.status === 1) return 'answered';
+            if (s.status === 2) return 'marked';
+            if (s.status === 3) return 'marked-answered';
+            if (s.status === 4) return 'visited';
+            return 'not-visited';
+        }
+
+        function showQuestion(idx) {
+            // Update previous question status to visited if it was not-visited
+            if (state[currentIdx].status === 0) state[currentIdx].status = 4;
+
+            // Update active section if we are forced to a question in another section
+            if (questions[idx].section && questions[idx].section !== activeSection) {
+                activeSection = questions[idx].section;
+                renderTabs();
+            }
+
+            currentIdx = idx;
+            // Mark new question as visited if it was not-visited
+            if (state[idx].status === 0) state[idx].status = 4;
+
+            updateQuestionUI();
+            renderPalette();
+            updateLegendCounts();
+        }
+        function updateQuestionUI() {
+            const idx = currentIdx;
+            const q = questions[idx];
+            const display = document.getElementById('qDisplay');
+            let optionsHtml = q.options.map(opt => `
+                <div class="option-item ${state[idx].answer == opt.id ? 'selected' : ''}" onclick="selectOption(${idx}, ${opt.id}, this)">
+                    <div class="opt-radio"></div>
+                    <div class="opt-text">${opt.option_text}</div>
+                </div>
+            `).join('');
+            display.innerHTML = `
+                <div class="q-number-label">Question No. ${idx + 1}</div>
+                <div class="q-text">${q.question_text}</div>
+                <div class="options-list">${optionsHtml}</div>
+            `;
+            renderPalette();
+            updateLegendCounts();
+        }
+
+        function selectOption(qIdx, optId, el) {
+            state[qIdx].answer = optId;
+            document.querySelectorAll('.option-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function handleAction(type) {
+            if (type === 'save_next') {
+                state[currentIdx].status = (state[currentIdx].answer !== null) ? 2 : 1;
+                moveNext();
+            } else if (type === 'mark_review') {
+                state[currentIdx].status = (state[currentIdx].answer !== null) ? 4 : 3;
+                moveNext();
+            } else if (type === 'clear') {
+                state[currentIdx].answer = null;
+                state[currentIdx].status = 1;
+                showQuestion(currentIdx);
+            }
+        }
+
+        function moveNext() {
+            if (currentIdx < questions.length - 1) showQuestion(currentIdx + 1);
+            else { updateLegendCounts(); renderPalette(); alert("End of paper."); }
+        }
+
+        function updateLegendCounts() {
+            const counts = [0, 0, 0, 0, 0];
+            state.forEach(s => counts[s.status]++);
+            const legendItems = document.querySelectorAll('.legend-item .status-box');
+            legendItems[0].innerText = counts[2]; 
+            legendItems[1].innerText = counts[1]; 
+            legendItems[2].innerText = counts[0]; 
+            legendItems[3].innerText = counts[3]; 
+            legendItems[4].innerText = counts[4]; 
+        }
+
+        function startTimer() {
+            const timerEl = document.getElementById('timer');
+            const itv = setInterval(() => {
+                if (timeLeft <= 0) { clearInterval(itv); autoSubmit(); return; }
+                timeLeft--;
+                const h = Math.floor(timeLeft / 3600), m = Math.floor((timeLeft % 3600) / 60), s = timeLeft % 60;
+                timerEl.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                if(timeLeft < 300) timerEl.style.color = '#ef4444';
+            }, 1000);
+        }
+
+        function openSubmitModal() {
+            const counts = [0, 0, 0, 0, 0];
+            state.forEach(s => counts[s.status]++);
+            document.getElementById('summaryTable').innerHTML = `
+                <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Number of Questions</td><td style="text-align:right; font-weight:700;">${questions.length}</td></tr>
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Answered</td><td style="text-align:right; font-weight:700; color:#22c55e;">${counts[2]}</td></tr>
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Not Answered</td><td style="text-align:right; font-weight:700; color:#ef4444;">${counts[1]}</td></tr>
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Marked for Review</td><td style="text-align:right; font-weight:700; color:#8b5cf6;">${counts[3]}</td></tr>
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Answered & Marked for Review</td><td style="text-align:right; font-weight:700; color:#8b5cf6;">${counts[4]}</td></tr>
+                    <tr><td style="padding:8px 0; border-bottom:1px solid #eee;">Not Visited</td><td style="text-align:right; font-weight:700;">${counts[0]}</td></tr>
+                </table>`;
+            document.getElementById('submitModal').style.display = 'flex';
+        }
+
+        function closeSubmitModal() { document.getElementById('submitModal').style.display = 'none'; }
+
+        function finalSubmit() {
+            let score = 0;
+            state.forEach((s, idx) => {
+                const selectedOpt = questions[idx].options.find(o => o.id == s.answer);
+                if (selectedOpt && selectedOpt.is_correct) score += (questions[idx].marks || 1);
+            });
             fetch("{{ url_for('student_bp.submit_exam') }}", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ course_code: courseCode, score: score })
-            }).then(res => res.json()).then(data => {
-                alert(`Exam Submitted! \nScore: ${score}`);
-                window.location.href = "{{ url_for('student_bp.result_page') }}";
-            }).catch(err => {
-                console.error(err);
-                alert(`Exam Submitted! \nScore: ${score} (But failed to save to server)`);
-                window.location.href = "{{ url_for('student_bp.result_page') }}";
-            });
+            }).then(() => { window.location.href = "{{ url_for('student_bp.result_page') }}"; });
         }
-    }
 
-    // Live Progress Reporter
-    function reportProgressLive() {
-        let currentScore = 0;
-        examQuestions.forEach(q => {
-            if (q.selectedOption !== null) {
-                const isCorrect = q.isCorrects[q.selectedOption];
-                if (isCorrect === 1) currentScore += q.marks;
-                else currentScore -= q.negative_marks;
-            }
-        });
+        function autoSubmit() { alert("Time is up! Submitting automatically."); finalSubmit(); }
 
-        fetch("{{ url_for('student_bp.report_progress') }}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ course_code: courseCode, score: currentScore })
-        }).catch(err => console.error("Live report failed:", err));
-    }
-
-    window.progressInterval = setInterval(reportProgressLive, 30000); // Every 30 seconds
-</script>
-
+        init();
+    </script>
 </body>
 </html>

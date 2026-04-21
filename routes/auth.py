@@ -2,21 +2,15 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash
 from database import get_connection, get_user_by_username, get_user_by_email_any_role, update_user_password
 from routes.logger import log_event, LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, OTP_SENT, OTP_VERIFIED, OTP_FAILED, PASSWORD_RESET
-import smtplib
 import random
 import time
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import os
+from utils.auth_utils import init_otp_session, send_otp_email, send_reset_confirmation_email
 
 
 auth_bp = Blueprint('auth_bp', __name__)
 
-# ─── Email configuration ───────────
-MAIL_HOST     = "smtp.gmail.com"
-MAIL_PORT     = 587
-MAIL_USERNAME = "ayush2005baghel@gmail.com"
-MAIL_PASSWORD = "fbfywnxicyrfpcxi"
-MAIL_FROM     = "Online Exam Portal <ayush2005baghel@gmail.com>"
+# Email configuration moved to utils/auth_utils.py
 
 
 # ================= STUDENT LOGIN =================
@@ -144,6 +138,8 @@ def faculty_login():
 
     return render_template("faculty_login.html")
 
+# send_otp_email moved to utils/auth_utils.py
+
 # ================= FORGOT PASSWORD =================
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
@@ -158,13 +154,9 @@ def forgot_password():
             flash("No account found with that email address.", "danger")
             return render_template("forgot_password.html")
 
-        # Generate 6-digit OTP
-        otp = str(random.randint(100000, 999999))
-        session["otp"]           = otp
-        session["otp_email"]     = email
-        session["otp_user_id"]   = user["id"]
-        session["otp_timestamp"] = time.time()
-
+        # Initialize OTP session and send email using utils
+        otp = init_otp_session(user["id"], email)
+        
         log_event(
             event_type=OTP_SENT,
             description=f"Password reset OTP sent to '{email}'.",
@@ -174,38 +166,9 @@ def forgot_password():
             request=request
         )
 
-        # Send OTP email
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = "Your OTP for Password Reset"
-            msg["From"]    = MAIL_FROM
-            msg["To"]      = email
-
-            html_body = f"""
-            <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:30px;
-                        background:#0f172a;color:#e2e8f0;border-radius:16px;">
-              <h2 style="text-align:center;color:#818cf8;">Online Exam Portal</h2>
-              <p style="text-align:center;font-size:15px;color:#94a3b8;">Password Reset Request</p>
-              <div style="background:#1e293b;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
-                <p style="margin:0 0 8px;font-size:14px;color:#94a3b8;">Your One-Time Password (OTP) is:</p>
-                <span style="font-size:36px;font-weight:bold;letter-spacing:8px;
-                            color:#818cf8;">{otp}</span>
-                <p style="margin:12px 0 0;font-size:13px;color:#64748b;">Valid for 10 minutes only.</p>
-              </div>
-              <p style="font-size:13px;color:#64748b;text-align:center;">
-                If you did not request this, please ignore this email.
-              </p>
-            </div>
-            """
-            msg.attach(MIMEText(html_body, "html"))
-
-            with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as server:
-                server.starttls()
-                server.login(MAIL_USERNAME, MAIL_PASSWORD)
-                server.sendmail(MAIL_USERNAME, email, msg.as_string())
-
+        if send_otp_email(email, otp):
             flash("OTP sent to your registered email address. Check your inbox.", "success")
-        except Exception as e:
+        else:
             print(f"[DEV] OTP for {email}: {otp}")
             flash(f"Could not send email. DEV OTP printed to console.", "danger")
 
@@ -250,6 +213,42 @@ def verify_otp():
 
     return render_template("verify_otp.html", email=session.get("otp_email", ""))
 
+@auth_bp.route("/resend-otp")
+def resend_otp():
+    if "otp_email" not in session or "otp_user_id" not in session:
+        flash("Session expired. Please start again.", "danger")
+        return redirect(url_for("auth_bp.forgot_password"))
+    
+    # Anti-spam cooldown: 60 seconds
+    last_resend = session.get("resend_timestamp", 0)
+    time_elapsed = time.time() - last_resend
+    
+    if time_elapsed < 60:
+        flash(f"Please wait {int(60 - time_elapsed)} seconds before requesting a new OTP.", "danger")
+        return redirect(url_for("auth_bp.verify_otp"))
+
+    email   = session["otp_email"]
+    user_id = session["otp_user_id"]
+    
+    # Generate NEW OTP using utils
+    otp = init_otp_session(user_id, email)
+    
+    log_event(
+        event_type=OTP_SENT,
+        description=f"Resent password reset OTP to '{email}'.",
+        actor_id=user_id,
+        metadata={"email": email, "is_resend": True},
+        request=request
+    )
+    
+    if send_otp_email(email, otp):
+        flash("A new OTP has been sent to your email.", "success")
+    else:
+        print(f"[DEV RESEND] OTP for {email}: {otp}")
+        flash("Could not send email. Check console for DEV code.", "danger")
+        
+    return redirect(url_for("auth_bp.verify_otp"))
+
 @auth_bp.route("/reset-password", methods=["GET", "POST"])
 def reset_password():
     if not session.get("otp_verified"):
@@ -281,6 +280,10 @@ def reset_password():
             metadata={"email": session.get("otp_email")},
             request=request
         )
+
+        # Send confirmation email
+        email = session.get("otp_email")
+        send_reset_confirmation_email(email)
 
         for key in ["otp", "otp_email", "otp_user_id", "otp_timestamp", "otp_verified"]:
             session.pop(key, None)

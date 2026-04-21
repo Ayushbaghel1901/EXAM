@@ -45,3 +45,8 @@ tmp/
 # Custom
 run.bat
 *.bat
+
+# Mock/Test Data
+*_mock.csv
+*_mock.xlsx
+scratch/

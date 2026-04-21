@@ -12,15 +12,29 @@ load_dotenv()
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
+
+import urllib.parse
+
 def get_connection():
     """
-    Returns a psycopg2 connection using RealDictCursor so every
-    row behaves like a regular Python dict (row["column_name"]).
+    Returns a psycopg2 connection using RealDictCursor.
+    Uses explicit parameters to avoid issues with special characters in URL.
     """
+    url = urllib.parse.urlparse(DATABASE_URL)
+    username = url.username
+    password = urllib.parse.unquote(url.password) if url.password else None
+    database = url.path[1:]
+    hostname = url.hostname
+    port = url.port
+
     conn = psycopg2.connect(
-        DATABASE_URL,
+        dbname=database,
+        user=username,
+        password=password,
+        host=hostname,
+        port=port,
         cursor_factory=psycopg2.extras.RealDictCursor,
-        sslmode="require"
+        sslmode=os.environ.get("DB_SSLMODE", "require")
     )
     return conn
 
@@ -162,13 +176,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS scheduled_exams (
             id          SERIAL PRIMARY KEY,
             subject     TEXT NOT NULL,
+            course_code TEXT,
             exam_date   DATE NOT NULL,
             start_time  TIME NOT NULL,
             end_time    TIME NOT NULL,
             duration    INTEGER NOT NULL,
             total_marks INTEGER NOT NULL,
-            status      TEXT NOT NULL DEFAULT 'scheduled'
-                        CHECK (status IN ('scheduled', 'active', 'completed')),
+            status      TEXT NOT NULL DEFAULT 'scheduled',
             created_by  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             created_at  TIMESTAMPTZ DEFAULT NOW()
         )
@@ -313,7 +327,7 @@ def update_scheduled_exam_statuses():
             UPDATE scheduled_exams 
             SET status = 'active'
             WHERE status = 'scheduled'
-              AND (exam_date + start_time) <= CURRENT_TIMESTAMP
+              AND (exam_date + start_time) <= LOCALTIMESTAMP
         """)
         
         # 2. active -> completed
@@ -321,7 +335,7 @@ def update_scheduled_exam_statuses():
             UPDATE scheduled_exams 
             SET status = 'completed'
             WHERE status = 'active'
-              AND (exam_date + end_time) <= CURRENT_TIMESTAMP
+              AND (exam_date + end_time) <= LOCALTIMESTAMP
         """)
         conn.commit()
     except Exception as e:

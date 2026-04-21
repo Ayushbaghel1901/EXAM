@@ -491,10 +491,10 @@ function filterDifficulty(diff, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   
-  const cards = document.querySelectorAll('.q-card');
+  const cards = document.querySelectorAll('.qcard');
   cards.forEach(card => {
     if (diff === 'all' || card.dataset.difficulty === diff) {
-      card.style.display = 'flex';
+      card.style.display = 'block';
     } else {
       card.style.display = 'none';
     }

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Result Analysis | {{ exam.exam_name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    :root {
+        --primary: #6366f1;
+        --bg-dark: #0b0f1a;
+        --bg-card: #161c2d;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: rgba(255,255,255,0.08);
+        --success: #10b981;
+        --danger: #ef4444;
+        --glass: rgba(255, 255, 255, 0.03);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        background-color: var(--bg-dark);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .header h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.5rem;
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+
+    .summary-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px;
+        text-align: center;
+    }
+
+    .summary-card .label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .summary-card .value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'Outfit', sans-serif;
+        color: var(--primary);
+    }
+
+    .analysis-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .content-box {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 40px;
+    }
+
+    .score-circle {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto 30px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .score-circle .percentage {
+        font-size: 3rem;
+        font-weight: 800;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .score-circle canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        text-decoration: none;
+        margin-bottom: 30px;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .back-btn:hover { color: var(--primary); }
+
+    .status-banner {
+        padding: 12px 24px;
+        border-radius: 12px;
+        text-align: center;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 30px;
+    }
+
+    .banner-passed { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
+    .banner-failed { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    .details-list {
+        margin-top: 40px;
+        border-top: 1px solid var(--border);
+        padding-top: 30px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .detail-item .lbl { color: var(--text-muted); }
+    .detail-item .val { font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <a href="{{ url_for('student_bp.result_page') }}" class="back-btn">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        Back to Results
+    </a>
+
+    <header class="header">
+        <h1>Exam Analysis</h1>
+        <p>{{ exam.exam_name }}</p>
+    </header>
+
+    <div class="analysis-container">
+        <div class="content-box">
+            {% set pct = (attempt.score / attempt.total_marks * 100)|round(1) %}
+            {% set passed = pct >= 40 %}
+
+            <div class="status-banner {{ 'banner-passed' if passed else 'banner-failed' }}">
+                Status: {{ 'Passed' if passed else 'Failed' }}
+            </div>
+
+            <div class="score-circle">
+                <canvas id="percentageChart"></canvas>
+                <div class="percentage">{{ pct }}%</div>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span class="label">Obtained Marks</span>
+                    <div class="value">{{ attempt.score }}</div>
+                </div>
+                <div class="summary-card">
+                    <span class="label">Total Marks</span>
+                    <div class="value">{{ attempt.total_marks }}</div>
+                </div>
+                <div class="summary-card">
+                    <span class="label">Attempt Date</span>
+                    <div class="value" style="font-size: 1.2rem;">{{ attempt.attempt_time[:10] }}</div>
+                </div>
+            </div>
+
+            <div class="details-list">
+                <div class="detail-item">
+                    <span class="lbl">Student Name</span>
+                    <span class="val">{{ attempt.full_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="lbl">Enrollment No.</span>
+                    <span class="val">{{ attempt.enrollment_no }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="lbl">Duration Used</span>
+                    <span class="val">Completed</span>
+                </div>
+                <div class="detail-item">
+                    <span class="lbl">Proctoring Status</span>
+                    <span class="val" style="color: var(--success)">Secure</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ctx = document.getElementById('percentageChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [{{ pct }}, {{ 100 - pct }}],
+                backgroundColor: ['#6366f1', 'rgba(255,255,255,0.05)'],
+                borderWidth: 0,
+                circumference: 360,
+                rotation: 0,
+                cutout: '85%',
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            events: []
+        }
+    });
+</script>
+
+</body>
+</html>
