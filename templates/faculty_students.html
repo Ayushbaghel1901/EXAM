@@ -275,27 +275,43 @@ body{overflow-x:hidden;overflow-y:hidden}
     <div class="toolbar">
       <div class="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="sSrch" placeholder="Search name or enrollment…" oninput="filterStudents()">
+        <input type="text" id="sSrch" placeholder="Quick Search (Name, Enrollment...)" oninput="filterStudents()">
       </div>
-      <select class="filter-sel" id="semFilter" onchange="filterStudents()">
-        <option value="">All Semesters</option>
-        {% set sems = [] %}
-        {% for s in students %}
-          {% if s.student_semester not in sems %}{% if sems.append(s.student_semester) %}{% endif %}
-          <option value="{{ s.student_semester }}">Semester {{ s.student_semester }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-      <select class="filter-sel" id="branchFilter" onchange="filterStudents()">
-        <option value="">All Branches</option>
-        {% set brs = [] %}
-        {% for s in students %}
-          {% if s.student_branch not in brs %}{% if brs.append(s.student_branch) %}{% endif %}
-          <option value="{{ s.student_branch }}">{{ s.student_branch }}</option>
-          {% endif %}
-        {% endfor %}
-      </select>
-      <span class="count-pill" id="cntPill">{{ students|length }} student{{ 's' if students|length != 1 else '' }}</span>
+      
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <select class="filter-sel" id="semFilter" onchange="filterStudents()">
+          <option value="">Semester: All</option>
+          {% for sem in filter_semesters %}
+          <option value="{{ sem }}">Semester {{ sem }}</option>
+          {% endfor %}
+        </select>
+
+        <select class="filter-sel" id="branchFilter" onchange="filterStudents()">
+          <option value="">Branch: All</option>
+          {% for br in filter_branches %}
+          <option value="{{ br }}">{{ br }}</option>
+          {% endfor %}
+        </select>
+
+        <select class="filter-sel" id="subjectFilter" onchange="filterStudents()">
+          <option value="">Subject: All</option>
+          {% for subj in filter_subjects %}
+          <option value="{{ subj|lower }}">{{ subj }}</option>
+          {% endfor %}
+        </select>
+
+        <select class="filter-sel" id="statusFilter" onchange="filterStudents()">
+          <option value="">Status: All</option>
+          <option value="enrolled">Enrolled</option>
+          <option value="unassigned">Not Enrolled</option>
+        </select>
+
+        <button class="btn btn-primary" style="background:var(--surface2); color:var(--rose); border:1px solid rgba(244,63,94,.2); box-shadow:none; padding:9px 12px" onclick="clearFilters()" title="Reset Filters">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+      </div>
+
+      <span class="count-pill" id="cntPill" style="margin-left:auto">{{ students|length }} students</span>
     </div>
 
     <div class="panel">
@@ -315,7 +331,9 @@ body{overflow-x:hidden;overflow-y:hidden}
           {% for s in students %}
           <tr data-name="{{ s.full_name|lower }} {{ s.enrollment_no|lower }}"
               data-sem="{{ s.student_semester }}"
-              data-branch="{{ s.student_branch }}">
+              data-branch="{{ s.student_branch }}"
+              data-status="{{ 'enrolled' if s.subject_name else 'unassigned' }}"
+              data-subjects="{{ s.subject_name|lower if s.subject_name else '' }}">
             <td style="color:var(--txt3);font-size:12px">{{ loop.index }}</td>
             <td>
               <div class="s-name-col">
@@ -468,16 +486,36 @@ function filterStudents(){
   const term = document.getElementById('sSrch').value.toLowerCase();
   const sem = document.getElementById('semFilter').value;
   const br = document.getElementById('branchFilter').value;
+  const stat = document.getElementById('statusFilter').value;
+  const subj = document.getElementById('subjectFilter').value;
+  
   let vis = 0;
   document.querySelectorAll('#sBody tr').forEach(tr=>{
     const nm = tr.dataset.name||'';
     const s = tr.dataset.sem||'';
     const b = tr.dataset.branch||'';
-    const ok = (!term||nm.includes(term))&&(!sem||s===sem)&&(!br||b===br);
+    const st = tr.dataset.status||'';
+    const subs = tr.dataset.subjects||'';
+    
+    const ok = (!term||nm.includes(term)) && 
+               (!sem||s===sem) && 
+               (!br||b===br) && 
+               (!stat||st===stat) && 
+               (!subj||subs.includes(subj));
+               
     tr.style.display = ok?'':'none';
     if(ok) vis++;
   });
   document.getElementById('cntPill').textContent = vis+' student'+(vis!==1?'s':'');
+}
+
+function clearFilters() {
+    document.getElementById('sSrch').value = '';
+    document.getElementById('semFilter').value = '';
+    document.getElementById('branchFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('subjectFilter').value = '';
+    filterStudents();
 }
 
 // / shortcut to focus search

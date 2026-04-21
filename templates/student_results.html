@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Analytics | Online Exam System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    :root {
+        --primary: #6366f1; /* Indigo 500 */
+        --primary-light: #818cf8;
+        --bg-dark: #0b0f1a;
+        --bg-card: #161c2d;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: #2d3748;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --glass: rgba(255, 255, 255, 0.03);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        background-color: var(--bg-dark);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                          radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    /* Navbar/Header */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .header-title h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        background: linear-gradient(to right, #fff, var(--text-muted));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .back-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .back-btn:hover { color: var(--primary-light); }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 4px; height: 100%;
+        background: var(--primary);
+        opacity: 0.5;
+    }
+
+    .stat-card.passed::after { background: var(--success); }
+    .stat-card.avg::after { background: var(--warning); }
+
+    .stat-info h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-info .value { font-size: 2.2rem; font-weight: 700; font-family: 'Outfit', sans-serif; }
+
+    .stat-icon {
+        width: 54px;
+        height: 54px;
+        background: var(--glass);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    /* Main Grid */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 24px;
+        align-items: start;
+    }
+
+    @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* Results Table */
+    .content-box {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .box-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .box-header h2 { font-size: 1.3rem; font-family: 'Outfit', sans-serif; }
+
+    .results-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 12px;
+    }
+
+    .results-table th {
+        text-align: left;
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.85rem;
+        padding: 0 20px 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .result-row {
+        background: var(--glass);
+        transition: all 0.2s;
+    }
+
+    .result-row:hover { background: rgba(255,255,255,0.06); }
+
+    .result-row td {
+        padding: 18px 20px;
+        font-size: 0.95rem;
+    }
+
+    .result-row td:first-child { border-radius: 12px 0 0 12px; }
+    .result-row td:last-child { border-radius: 0 12px 12px 0; }
+
+    .exam-name { font-weight: 600; font-family: 'Outfit', sans-serif; display: block; }
+    .exam-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+    .score-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .status-chip {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .status-passed { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
+    .status-failed { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+    .status-awaited { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+    .btn-analysis {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--primary);
+        color: white;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-analysis:hover {
+        background: var(--primary-light);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--primary);
+    }
+    
+    .btn-analysis.disabled {
+        background: var(--glass);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    /* Right column components */
+    .chart-container {
+        padding: 20px;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .profile-summary {
+        text-align: center;
+        padding: 30px 20px;
+    }
+
+    .avatar-large {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, var(--primary), #a855f7);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: 700;
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .profile-info h4 { font-size: 1.2rem; margin-bottom: 4px; }
+    .profile-info p { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Animations */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-up { animation: fadeInUp 0.8s ease-out; }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <a href="{{ url_for('student_bp.student_dashboard') }}" class="back-btn">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                Back to Dashboard
+            </a>
+            <h1>Performance Analytics</h1>
+        </div>
+        <div class="user-meta">
+            <span class="status-chip status-passed">Academic Year 2024</span>
+        </div>
+    </header>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-info">
+                <h3>Exams Taken</h3>
+                <div class="value">{{ stats.total }}</div>
+            </div>
+            <div class="stat-icon">📝</div>
+        </div>
+        <div class="stat-card passed">
+            <div class="stat-info">
+                <h3>Exams Passed</h3>
+                <div class="value">{{ stats.passed }}</div>
+            </div>
+            <div class="stat-icon">✅</div>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-info">
+                <h3>Avg. Percentage</h3>
+                <div class="value">{{ stats.avg_score }}%</div>
+            </div>
+            <div class="stat-icon">📈</div>
+        </div>
+    </div>
+
+    <!-- Main Section -->
+    <div class="main-grid">
+        <!-- Results History -->
+        <section class="content-box animate-up">
+            <div class="box-header">
+                <h2>Attempt History</h2>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">Showing last {{ results|length }} attempts</div>
+            </div>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Exam Details</th>
+                        <th>Score</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in results %}
+                    <tr class="result-row">
+                        <td>
+                            <span class="exam-name">{{ res.exam_name }}</span>
+                            <span class="exam-sub">{{ res.subject_name }} ({{ res.course_code }})</span>
+                        </td>
+                        <td>
+                            {% if res.status_text != 'AWAITED' %}
+                            <div class="score-badge">
+                                <span class="{{ 'text-success' if res.status_text == 'PASSED' else 'text-danger' }}">
+                                    {{ res.score }}
+                                </span>
+                                <span style="font-weight: 400; color: var(--text-muted); font-size: 0.8rem;">/ {{ res.total_marks }}</span>
+                            </div>
+                            {% else %}
+                            <span style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">Hidden</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-chip {{ 'status-passed' if res.status_text == 'PASSED' else ('status-failed' if res.status_text == 'FAILED' else 'status-awaited') }}">
+                                {{ res.status_text }}
+                            </span>
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">
+                            {{ res.attempt_time[:10] }}
+                        </td>
+                        <td>
+                            {% if res.status_text != 'AWAITED' %}
+                            <a href="{{ url_for('student_bp.view_analysis', course_code=res.course_code) }}" class="btn-analysis">
+                                Analysis
+                            </a>
+                            {% else %}
+                            <button class="btn-analysis disabled">Wait..</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if not results %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 60px; color: var(--text-muted);">
+                            <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;">📂</div>
+                            <p>No exam results found yet. Take an exam to see your history!</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Sidebar Widgets -->
+        <aside class="animate-up" style="animation-delay: 0.2s;">
+            <!-- Profile Info -->
+            <div class="content-box profile-summary" style="margin-bottom: 24px;">
+                <div class="avatar-large">{{ student.full_name[0] }}</div>
+                <div class="profile-info">
+                    <h4>{{ student.full_name }}</h4>
+                    <p>{{ student.enrollment_no }}</p>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="content-box">
+                <div class="box-header">
+                    <h2>Chart View</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+    {% if results %}
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    const chartLabels = [{% for res in results|reverse %}{% if res.status_text != 'AWAITED' %}"{{ res.course_code }}",{% endif %}{% endfor %}];
+    const chartData = [{% for res in results|reverse %}{% if res.status_text != 'AWAITED' %}{{ res.percentage }},{% endif %}{% endfor %}];
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Performance %',
+                data: chartData,
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#6366f1',
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8' }
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+
+</body>
+</html>

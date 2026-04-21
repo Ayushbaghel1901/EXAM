@@ -152,10 +152,19 @@
           <td>
             <div class="action-btns" style="justify-content: flex-end;">
               <button class="btn-icon btn-edit" title="Edit Subject" 
-                      onclick="openEditModal('{{ s.id }}', '{{ s.subject_code }}', '{{ s.subject_name }}', '{{ s.branch }}', '{{ s.semester }}', '{{ s.faculty_id or '' }}')">
+                      data-id="{{ s.id }}"
+                      data-code="{{ s.subject_code }}"
+                      data-name="{{ s.subject_name }}"
+                      data-branch="{{ s.branch }}"
+                      data-semester="{{ s.semester }}"
+                      data-faculty="{{ s.faculty_id or '' }}"
+                      onclick="editSubjectFromBtn(this)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"/></svg>
               </button>
-              <button class="btn-icon btn-delete" title="Delete Subject" onclick="deleteSubject('{{ s.id }}', '{{ s.subject_name }}')">
+              <button class="btn-icon btn-delete" title="Delete Subject" 
+                      data-id="{{ s.id }}"
+                      data-name="{{ s.subject_name }}"
+                      onclick="deleteSubjectFromBtn(this)">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
               </button>
             </div>
@@ -284,6 +293,15 @@ function openEditModal(id, code, name, branch, sem, facultyId) {
   document.getElementById('subSem').value = sem;
   document.getElementById('subFaculty').value = facultyId;
   creationModal.classList.add('active');
+}
+
+function editSubjectFromBtn(btn) {
+  const d = btn.dataset;
+  openEditModal(d.id, d.code, d.name, d.branch, d.semester, d.faculty);
+}
+
+function deleteSubjectFromBtn(btn) {
+  deleteSubject(btn.dataset.id, btn.dataset.name);
 }
 
 function openBulkModal() {

@@ -192,9 +192,15 @@
       {% endif %}
     {% endwith %}
 
-    <div class="header">
-        <h1>Available Exam Slots</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">Monitor and enter your scheduled live exam sessions.</p>
+    <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <h1>Available Exam Slots</h1>
+            <p style="color: var(--text-muted); margin-top: 5px;">Monitor and enter your scheduled live exam sessions.</p>
+        </div>
+        <div style="text-align: right; background: rgba(255,255,255,0.03); padding: 10px 15px; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Portal Time</div>
+            <div id="portal-clock" style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">--:--:--</div>
+        </div>
     </div>
 
     <div class="exams-grid">
@@ -216,6 +222,10 @@
                     <div class="info-item">
                         <span class="info-label">Duration</span>
                         <span class="info-val">{{ exam.duration }} Mins</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Course Code</span>
+                        <span class="info-val" style="color:var(--primary); font-family: monospace;">{{ exam.course_code }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Marks</span>
@@ -254,5 +264,23 @@
     </div>
 </main>
 
+<script>
+    // Authority time from server
+    let serverTime = new Date("{{ now_iso }}");
+    
+    function updateClock() {
+        // Increment server time by 1 second locally
+        serverTime.setSeconds(serverTime.getSeconds() + 1);
+        
+        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        document.getElementById('portal-clock').textContent = serverTime.toLocaleTimeString([], options);
+    }
+    
+    // Refresh the whole page every 60 seconds to stay in sync with server status
+    setTimeout(() => { location.reload(); }, 60000);
+
+    setInterval(updateClock, 1000);
+    updateClock();
+</script>
 </body>
 </html>

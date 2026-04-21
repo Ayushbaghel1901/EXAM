@@ -2,6 +2,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from database import get_connection, update_user_password, update_scheduled_exam_statuses
 from werkzeug.security import check_password_hash
 from datetime import datetime
+import pytz
+
+IST = pytz.timezone('Asia/Kolkata')
 from routes.logger import log_event, EXAM_STARTED, EXAM_SUBMITTED, DUPLICATE_SUBMIT, BLACKLIST_ADDED
 
 student_bp = Blueprint('student_bp', __name__)
@@ -122,7 +125,7 @@ def student_exams():
     exams_data = _cur.fetchall()
     
     # Check scheduling status
-    now = datetime.now()
+    now = datetime.now(IST).replace(tzinfo=None)
     exams_with_status = []
     for row in exams_data:
         d = dict(row)
@@ -196,8 +199,7 @@ def exam_page():
         conn.close()
         flash("You are not enrolled for this specific course/exam.", "danger")
         return redirect(url_for("student_bp.student_dashboard"))
-        
-    now = datetime.now()
+    now = datetime.now(IST).replace(tzinfo=None)
     
     # Check results saving / Live monitoring initialization
     _cur.execute("SELECT id, completed FROM exam_attempts WHERE enrollment_no = %s AND course_code = %s", (enrollment_no, course_code))
@@ -258,15 +260,25 @@ def exam_page():
         exam_q_count = _cur.fetchone()["count"]
         
         if exam_q_count > 0:
+            # Sort by section and then by question ID to ensure continuous, predictable numbering
             _cur.execute("""
-                SELECT q.*, eq.section 
+                SELECT q.*, eq.section, s.subject_name
                 FROM questions q
                 JOIN exam_questions eq ON q.id = eq.question_id
+                JOIN subjects s ON q.subject_id = s.id
                 WHERE eq.course_code = %s
+                ORDER BY eq.section ASC, q.id ASC
             """, (course_code,))
             questions_db = _cur.fetchall()
         else:
-            _cur.execute("SELECT * FROM questions WHERE subject_id = %s", (subject_id,))
+            # Fallback to all questions for the subject, also ordered
+            _cur.execute("""
+                SELECT q.*, s.subject_name 
+                FROM questions q
+                JOIN subjects s ON q.subject_id = s.id
+                WHERE q.subject_id = %s
+                ORDER BY q.id ASC
+            """, (subject_id,))
             questions_db = _cur.fetchall()
     except Exception:
         questions_db = []
@@ -281,7 +293,7 @@ def exam_page():
         questions.append(q_dict)
 
     conn.close()
-    return render_template("exam.html", subject_name=subject_name, exam=dict(exam), questions=questions)
+    return render_template("exam.html", subject_name=subject_name, exam=dict(exam), questions=questions, student=student)
 
 
 @student_bp.route("/exam/submit", methods=["POST"])
@@ -417,11 +429,116 @@ def blacklist_student():
     
     return {"success": True}
 
-@student_bp.route("/result")
+@student_bp.route("/student/results")
 def result_page():
-    if not session.get("user_id"):
+    if not session.get("user_id") or session.get("role") != "student":
         return redirect(url_for("auth_bp.student_login"))
-    return render_template("result.html")
+    
+    conn = get_connection()
+    _cur = conn.cursor()
+    
+    # Get student enrollment
+    _cur.execute("SELECT enrollment_no, full_name FROM student_details WHERE user_id = %s", (session["user_id"],))
+    student = _cur.fetchone()
+    if not student:
+        conn.close()
+        return redirect(url_for("student_bp.student_dashboard"))
+    
+    enrollment_no = student["enrollment_no"]
+    
+    # Fetch all attempts with exam details
+    _cur.execute("""
+        SELECT 
+            e.exam_name,
+            e.course_code,
+            s.subject_name,
+            ea.score,
+            e.total_marks,
+            e.pass_percentage,
+            ea.attempt_time,
+            ea.completed,
+            e.results_published
+        FROM exam_attempts ea
+        JOIN exams e ON ea.course_code = e.course_code
+        JOIN subjects s ON e.subject_id = s.id
+        WHERE ea.enrollment_no = %s AND ea.completed = 1
+        ORDER BY ea.attempt_time DESC
+    """, (enrollment_no,))
+    results = _cur.fetchall()
+    
+    # Calculate Stats
+    total_exams = len(results)
+    passed_exams = 0
+    total_score = 0
+    max_possible = 0
+    
+    formatted_results = []
+    for row in results:
+        res = dict(row)
+        if res["results_published"]:
+            pass_mark = (res["total_marks"] * res["pass_percentage"]) / 100
+            res["status_text"] = "PASSED" if res["score"] >= pass_mark else "FAILED"
+            res["percentage"] = (res["score"] / res["total_marks"]) * 100 if res["total_marks"] > 0 else 0
+            
+            if res["status_text"] == "PASSED":
+                passed_exams += 1
+            total_score += res["score"]
+            max_possible += res["total_marks"]
+        else:
+            res["status_text"] = "AWAITED"
+            res["percentage"] = 0
+            
+        formatted_results.append(res)
+        
+    avg_percentage = (total_score / max_possible) * 100 if max_possible > 0 else 0
+    
+    conn.close()
+    return render_template(
+        "student_results.html", 
+        student=dict(student),
+        results=formatted_results,
+        stats={
+            "total": total_exams,
+            "passed": passed_exams,
+            "avg_score": round(avg_percentage, 1)
+        }
+    )
+
+@student_bp.route("/student/results/analysis/<course_code>")
+def view_analysis(course_code):
+    if not session.get("user_id") or session.get("role") != "student":
+        return redirect(url_for("auth_bp.student_login"))
+
+    conn = get_connection()
+    _cur = conn.cursor()
+    
+    # Verify exam is published
+    _cur.execute("SELECT results_published, exam_name FROM exams WHERE course_code = %s", (course_code,))
+    exam = _cur.fetchone()
+    if not exam or not exam["results_published"]:
+        conn.close()
+        flash("Results for this exam are not yet published.", "warning")
+        return redirect(url_for("student_bp.result_page"))
+
+    # Fetch attempt details with exam total_marks
+    _cur.execute("""
+        SELECT ea.*, sd.full_name, e.total_marks
+        FROM exam_attempts ea
+        JOIN student_details sd ON ea.enrollment_no = sd.enrollment_no
+        JOIN exams e ON ea.course_code = e.course_code
+        WHERE ea.course_code = %s AND sd.user_id = %s
+    """, (course_code, session["user_id"]))
+    attempt = _cur.fetchone()
+    
+    if not attempt:
+        conn.close()
+        flash("No attempt found for this exam.", "danger")
+        return redirect(url_for("student_bp.result_page"))
+
+    # Fetch question-wise data if you track it (currently we only store total score)
+    # For now, we will show a beautiful summary analysis page
+    conn.close()
+    return render_template("result_analysis.html", exam=dict(exam), attempt=dict(attempt))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -433,6 +550,7 @@ def available_exams():
     if not session.get("user_id") or session.get("role") != "student":
         return redirect(url_for("auth_bp.student_login"))
 
+    update_scheduled_exam_statuses()
     conn = get_connection()
     _cur = conn.cursor()
 
@@ -465,7 +583,7 @@ def available_exams():
     raw = _cur.fetchall()
     conn.close()
 
-    now = datetime.now()
+    now = datetime.now(IST).replace(tzinfo=None)
     exams = []
     for row in raw:
         d = dict(row)
@@ -518,7 +636,7 @@ def start_exam(exam_id):
         flash("Exam not found.", "danger")
         return redirect(url_for("student_bp.available_exams"))
 
-    now = datetime.now()
+    now = datetime.now(IST).replace(tzinfo=None)
     try:
         dt_start = datetime.combine(exam["exam_date"], exam["start_time"])
         dt_end   = datetime.combine(exam["exam_date"], exam["end_time"])

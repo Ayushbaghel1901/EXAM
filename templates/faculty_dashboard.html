@@ -460,7 +460,6 @@ body{overflow-x:auto;overflow-y:auto}
               New Exam
             </a>
           </div>
-          </div>
         </div>
         <div style="overflow-x:auto; width:100%">
           {% if recent_exams %}
@@ -813,6 +812,32 @@ document.querySelectorAll('.stat').forEach(c => {
 document.querySelectorAll('[data-width]').forEach(el => el.style.width = el.dataset.width + '%');
 document.querySelectorAll('[data-bg]').forEach(el => el.style.background = el.dataset.bg);
 document.querySelectorAll('[data-color]').forEach(el => el.style.color = el.dataset.color);
+
+// Theme Toggle Logic
+function toggleTheme() {
+  const body = document.body;
+  const isLight = body.classList.toggle('light');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  updateThemeUI(isLight);
+}
+
+function updateThemeUI(isLight) {
+  const label = document.getElementById('themeLabel');
+  const iconDark = document.getElementById('iconDark');
+  const iconLight = document.getElementById('iconLight');
+  if (label) label.textContent = isLight ? 'Dark Mode' : 'Light Mode';
+  if (iconDark) iconDark.style.display = isLight ? 'none' : 'block';
+  if (iconLight) iconLight.style.display = isLight ? 'block' : 'none';
+}
+
+// Initialize theme on load
+(function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  const isLight = saved === 'light' || (!saved && prefersLight);
+  if (isLight) document.body.classList.add('light');
+  updateThemeUI(isLight);
+})();
 
 // Mobile Sidebar Toggle
 function toggleSidebar() {
